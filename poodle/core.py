@@ -63,7 +63,7 @@ def smart_input(prompt=''):
     is_int = re.compile(r'^\d+$')
     is_float = re.compile(r'^\d+\.\d*$')
     is_str = re.compile(r'.+|$')
-    is_list = re.compile(r'^\[(?!\[).*(?<!\])\]$') # excludes placeholders
+    is_list = re.compile(r'^\[.*\]$')
     is_tuple = re.compile(r'^\(.*\)$')
     is_dict = re.compile(r'^\{.*\}$')
     # Check for storage type

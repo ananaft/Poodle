@@ -4,6 +4,7 @@
 import context
 from core import smart_input
 
+import unittest
 from unittest import TestCase
 from unittest.mock import patch
 
@@ -98,9 +99,6 @@ class TestSmartInput(TestCase):
     def test_float_6(self, input):
         self.assertEqual(smart_input(), '3.1a')
 
-
-    # Test placeholders
-    # new placeholder = ~~x~~
 
     # Test lists
     @patch('builtins.input', return_value='[1,2,3]')
