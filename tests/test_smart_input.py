@@ -168,28 +168,98 @@ class TestSmartInput(TestCase):
 
     # Test for wanted errors
     # Lists
+    @patch('builtins.input', return_value='[a]')
+    def test_error_list_NameError_1(self, input):
+        with self.assertRaises(NameError):
+            smart_input()
+    
     @patch('builtins.input', return_value='[[]')
     def test_error_list_SyntaxError_1(self, input):
-        self.assertRaises(expected_exception=SyntaxError)
+        with self.assertRaises(SyntaxError):
+            smart_input()
+
+    @patch('builtins.input', return_value='[]]')
+    def test_error_list_SyntaxError_2(self, input):
+        with self.assertRaises(SyntaxError):
+            smart_input()
 
     @patch('builtins.input', return_value='[(]')
-    def test_error_list_SyntaxError_2(self, input):
-        self.assertRaises(expected_exception=SyntaxError)
-
-    @patch('builtins.input', return_value='[{]')
     def test_error_list_SyntaxError_3(self, input):
-        self.assertRaises(expected_exception=SyntaxError)
+        with self.assertRaises(SyntaxError):
+            smart_input()
+
+    @patch('builtins.input', return_value='[)]')
+    def test_error_list_SyntaxError_4(self, input):
+        with self.assertRaises(SyntaxError):
+            smart_input()
 
     @patch('builtins.input', return_value='[{]')
-    def test_error_list_SyntaxError_4(self, input):
-        self.assertRaises(expected_exception=SyntaxError)
+    def test_error_list_SyntaxError_5(self, input):
+        with self.assertRaises(SyntaxError):
+            smart_input()
+
+    @patch('builtins.input', return_value='[}]')
+    def test_error_list_SyntaxError_6(self, input):
+        with self.assertRaises(SyntaxError):
+            smart_input()
 
     # Tuples
+    @patch('builtins.input', return_value='(a)')
+    def test_error_tuple_NameError_1(self, input):
+        with self.assertRaises(NameError):
+            smart_input()
+    
+    @patch('builtins.input', return_value='(()')
+    def test_error_tuple_SyntaxError_1(self, input):
+        with self.assertRaises(SyntaxError):
+            smart_input()
+
+    @patch('builtins.input', return_value='())')
+    def test_error_tuple_SyntaxError_2(self, input):
+        with self.assertRaises(SyntaxError):
+            smart_input()
+
+    @patch('builtins.input', return_value='([)')
+    def test_error_tuple_SyntaxError_3(self, input):
+        with self.assertRaises(SyntaxError):
+            smart_input()
+
+    @patch('builtins.input', return_value='(])')
+    def test_error_tuple_SyntaxError_4(self, input):
+        with self.assertRaises(SyntaxError):
+            smart_input()
+
+    @patch('builtins.input', return_value='({)')
+    def test_error_tuple_SyntaxError_5(self, input):
+        with self.assertRaises(SyntaxError):
+            smart_input()
+
+    @patch('builtins.input', return_value='(})')
+    def test_error_tuple_SyntaxError_6(self, input):
+        with self.assertRaises(SyntaxError):
+            smart_input()
 
     # Dicts
     @patch('builtins.input', return_value='{a: 1}')
     def test_error_dict_NameError_1(self, input):
-        self.assertRaises(expected_exception=NameError)
+        with self.assertRaises(NameError):
+            smart_input()
+
+    @patch('builtins.input', return_value='{"a": a}')
+    def test_error_dict_NameError_2(self, input):
+        with self.assertRaises(NameError):
+            smart_input()
+
+    @patch('builtins.input', return_value='{[]: 1}')
+    def test_error_dict_TypeError_1(self, input):
+        with self.assertRaises(TypeError):
+            smart_input()
+
+    @patch('builtins.input', return_value='{{}: 1}')
+    def test_error_dict_TypeError_2(self, input):
+        with self.assertRaises(TypeError):
+            smart_input()
+
 
 if __name__ == '__main__':
     unittest.main()
