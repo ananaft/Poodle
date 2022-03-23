@@ -5,7 +5,7 @@ import os
 import re
 from PIL import Image
 import numpy as np
-import ast
+import json
 import warnings
 import copy
 
@@ -136,7 +136,7 @@ def evaluate_exam(exam_name, stats_file, ratings_file):
       Path of the JSON file exported from 'Bewertung'.
 
     ------------------------
-    Dependencies: ast, numpy, warnings, copy
+    Dependencies: json, numpy, warnings, copy
     """
 
     # Check for correct exam name
@@ -149,12 +149,18 @@ def evaluate_exam(exam_name, stats_file, ratings_file):
             return 'Evaluation aborted.'
     # Read stats_file for question names
     rf = open(stats_file)
-    stats_list = ast.literal_eval(rf.read())
+    stats_list = json.load(rf)
     rf.close()
-    name_list = [stats_list[1][q][2] for q in range(len(stats_list[1]))]
+    # Remove "clones" of rvar questions
+    stats_list = [
+        q for q in stats_list[1] if type(q[0]) == int
+    ]
+    name_list = [
+        q[2] for q in stats_list
+    ]
     # Read ratings_file for exam and question scores
     rf = open(ratings_file)
-    ratings_list = ast.literal_eval(rf.read())
+    ratings_list = json.load(rf)
     rf.close()
     # Reverse each student element and keep only question and exam scores
     scores_list = [list(reversed(ratings_list[0][s])) for s in range(len(ratings_list[0]))]
