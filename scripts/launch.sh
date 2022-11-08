@@ -12,7 +12,7 @@ name_check () {
 
 package_check () {
 	local -i pcount="$(pip3 list --no-python-version-warning | tail -n +3 | \
-	awk '{if ($1 ~ /^numpy$|^pandas$|^Pillow$|^pymongo$|^pyperclip$/) print $1}' | wc -l)"
+	awk '{if ($1 ~ /^numpy$|^pandas$|^Pillow$|^pymongo$|^pyperclip$|^lxml$/) print $1}' | wc -l)"
 	if (( "$pcount" < 5 )); then
 		return 1
 	else
@@ -40,6 +40,8 @@ main () {
         xfce4-terminal -e "mongod --dbpath ./db --logappend --nojournal"
     elif [[ "$term" == 'gnome-terminal-' ]]; then
         gnome-terminal -- sh -c "mongod --dbpath ./db --logappend --nojournal; bash"
+    elif [[ $(echo "$term" | grep 'urxvt') ]]; then
+	urxvtc -e mongod --dbpath ./db --logappend --nojournal
     else
         echo "Running on unsupported terminal: $term"
         exit
