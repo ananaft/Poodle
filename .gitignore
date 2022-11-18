@@ -130,3 +130,9 @@ dmypy.json
 
 # text files
 TODO
+
+# DBs
+databases/
+
+# MongoDB
+mongo/

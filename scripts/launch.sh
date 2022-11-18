@@ -37,11 +37,11 @@ main () {
     # Start MongoDB
     term=$(ps -o comm= -p "$(($(ps -o ppid= -p "$(($(ps -o sid= -p "$$")))")))")
     if [[ "$term" == 'xfce4-terminal' ]]; then
-        xfce4-terminal -e "mongod --dbpath ./db --logappend --nojournal"
+        xfce4-terminal -e "mongod --dbpath ./mongo --logappend --nojournal"
     elif [[ "$term" == 'gnome-terminal-' ]]; then
-        gnome-terminal -- sh -c "mongod --dbpath ./db --logappend --nojournal; bash"
+        gnome-terminal -- sh -c "mongod --dbpath ./mongo --logappend --nojournal; bash"
     elif [[ $(echo "$term" | grep 'urxvt') ]]; then
-	urxvtc -e mongod --dbpath ./db --logappend --nojournal
+	urxvtc -e mongod --dbpath ./mongo --logappend --nojournal
     else
         echo "Running on unsupported terminal: $term"
         exit
