@@ -20,7 +20,7 @@ def view(collection, search=None, field='name'):
     Arguments:
     ----------
     collection (var):
-      Determines which collection is being searched.
+      Determines which collection is being searched (QUESTIONS and EXAMS are standard).
     search (any/list):
       Search criterion that will be applied to the field. If passed as list,
       multiple criteria will be applied.

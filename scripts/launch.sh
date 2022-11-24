@@ -23,6 +23,9 @@ package_check () {
 main () {
     cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
     cd ".."
+    if ! ls | grep -q "^mongo$"; then
+	mkdir mongo
+    fi
 
     # Choose database
     if ! name_check "$1"; then

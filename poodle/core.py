@@ -1,6 +1,7 @@
 from config import *
 import context
 
+import json
 import time
 import os
 import platform
@@ -14,25 +15,95 @@ import copy
 from pprint import pprint
 
 
+def setup_db(db=DB.name):
+    # Check directories
+    if db not in os.listdir(BASE_PATH + '/databases/'):
+        os.mkdir(BASE_PATH + f'/databases/{db}')
+    DB_PATH = BASE_PATH + f'/databases/{db}/'
+    for d in ['backup', 'exams', 'img', 'random_vars']:
+        if d not in os.listdir(DB_PATH):
+            os.mkdir(DB_PATH + d)
+    # Check JSON config
+    if 'config.json' not in os.listdir(DB_PATH):
+        config = {
+            'NAME': db,
+            'Q_CATEGORIES': [],
+            'SHUFFLE': 1,
+            'RANDOM_ARR_SIZE': 100,
+            'COLLECTIONS': ['questions', 'exams']
+        }
+        with open(DB_PATH + 'config.json', 'w') as f:
+            json.dump(config, f, indent=2)
+
+    return None
+
+
+def apply_config():
+    db = DB.name
+    with open(BASE_PATH + f'/databases/{db}/config.json', 'r') as f:
+        config = json.load(f)
+    # Check for config keys
+    template = {
+        'NAME': f'{db}',
+        'Q_CATEGORIES': [],
+        'SHUFFLE': 1,
+        'RANDOM_ARR_SIZE': 100,
+        'COLLECTIONS': ['questions', 'exams']
+    }
+    for i, j in template.items():
+        if i not in config.keys():
+            config[i] = j
+    # Check for question categories
+    if config['Q_CATEGORIES'] == []:
+        db_categories = smart_input(
+            f'No question categories specified for database {db}!\n' +
+            'Please input list of categories you want to set for this database\n' +
+            'or input 0 if no predetermined categories are desired:\n'
+        )
+        config['Q_CATEGORIES'] = db_categories
+    # Update and reload JSON
+    with open(BASE_PATH + f'/databases/{db}/config.json', 'w') as f:
+        json.dump(config, f, indent=2)
+    with open(BASE_PATH + f'/databases/{db}/config.json', 'r') as f:
+        config = json.load(f)
+    # Set variables defined in JSON
+    global Q_CATEGORIES
+    global SHUFFLE
+    global RANDOM_ARR_SIZE
+    for c in config['COLLECTIONS']:
+        exec(f'global {c.upper()}')
+
+    Q_CATEGORIES = config['Q_CATEGORIES']
+    SHUFFLE = config['SHUFFLE']
+    RANDOM_ARR_SIZE = config['RANDOM_ARR_SIZE']
+    for c in config['COLLECTIONS']:
+        exec(f'{c.upper()} = DB.{c.lower()}')
+
+    return None
+
+
 def backup(db=DB.name):
     """
     Dependencies: config, time, os
     """
     backup_time = time.strftime('%Y-%m-%d_%H-%M-%S', time.localtime())
-    os.mkdir(f'backup/{backup_time}')
-    with open(f'backup/{backup_time}/timestamp', 'w') as wf:
+    os.mkdir(BASE_PATH + f'/databases/{db}/backup/{backup_time}')
+    with open(BASE_PATH + f'/databases/{db}/backup/{backup_time}/timestamp', 'w') as wf:
         wf.write(str(time.time()))
     if platform.system() == 'Linux':
         subprocess.run(["mongodump", f"--db={db}",
                         f"--out=backup/{backup_time}"])
 
 
-def restore(path, db=DB.name):
+def restore(path=None, db=DB.name):
     """
     Dependencies: config, platform, subprocess
     """
+    if path == None:
+        folder = sorted(os.listdir(BASE_PATH + f'/databases/{db}/backup/'))[-1]
+        path = BASE_PATH + f'/databases/{db}/backup/' + folder
     if platform.system() == 'Linux':
-        subprocess.run(["mongorestore", f"--db={db}", f"{path}"])
+        subprocess.run(["mongorestore", f"--nsInclude={db}.*", f"{path}"])
 
 
 def yesno(prompt=''):
@@ -230,11 +301,11 @@ def inspect_properties(dictionary, mode = 'standard', inspect = True, add = Fals
                                 break
                     else:
                         dictionary[k] = smart_input('New value: ')
-                        if k == 'name' and Q_CATEGORIES[DB.name]:
+                        if k == 'name' and Q_CATEGORIES:
                             # Check for correct question naming scheme
                             # and duplicates
                             collection_names = [q['name'] for q in QUESTIONS.find()]
-                            while (dictionary[k][:-4] not in Q_CATEGORIES[DB.name] or
+                            while (dictionary[k][:-4] not in Q_CATEGORIES or
                                    dictionary[k] in collection_names):
                                 dictionary[k] = input('Please input a valid ' +
                                                       'question name: ')
@@ -296,11 +367,11 @@ def inspect_properties(dictionary, mode = 'standard', inspect = True, add = Fals
                             break
                 else:
                     dictionary[k] = smart_input('New value: ')
-                    if k == 'name' and Q_CATEGORIES[DB.name]:
+                    if k == 'name' and Q_CATEGORIES:
                         # Check for correct question naming scheme
                         # and duplicates
                         collection_names = [q['name'] for q in QUESTIONS.find()]
-                        while (dictionary[k][:-4] not in Q_CATEGORIES[DB.name] or
+                        while (dictionary[k][:-4] not in Q_CATEGORIES or
                                dictionary[k] in collection_names):
                             dictionary[k] = input('Please input a valid ' +
                                                   'question name: ')
@@ -379,7 +450,7 @@ class MoodleQuestion(ET.ElementBase):
             current_file = q['img_files'][file_index]
             file_format = re.search(r'(?<=\.)\D+$', current_file)
             file_format = file_format.group()
-            with open('img/' + current_file, 'rb') as f:
+            with open(f'{BASE_PATH}/databases/{DB.name}/img/' + current_file, 'rb') as f:
                 b64 = base64.b64encode(f.read()).decode('utf-8')
             repl = f'<img src="data:image/{file_format};base64,{b64}" alt="" />'
             el.text = ET.CDATA(re.sub(r'\[\[file%s\]\]' % (m.group()), repl, el.text))
@@ -654,7 +725,7 @@ class DdimageortextQuestion(MoodleQuestion):
         self.loc.addnext(ET.SubElement(self, 'file', attrib={'name': q['img_files'][0], 'encoding': 'base64'}))
         self.loc = self.loc.getnext()
 
-        with open('img/' + q['img_files'][0], 'rb') as f:
+        with open(f'{BASE_PATH}/databases/{DB.name}/img/' + q['img_files'][0], 'rb') as f:
             b64 = base64.b64encode(f.read())
         self.loc.text = b64.decode('utf-8')
 
@@ -770,7 +841,7 @@ class CalculatedQuestion(MoodleQuestion):
         self.loc = self.loc.getnext()
         
         # Create all vars
-        code = f'from random_vars.rv_{q["name"]} import *'
+        code = f'from databases.{DB.name}.random_vars.rv_{q["name"]} import *'
         rvn = {}
         exec(code, rvn)
         for v in q['vars']:
@@ -826,7 +897,7 @@ class CalculatedQuestion(MoodleQuestion):
 def create_xml(exam, filename='import.xml'):
     # Create directory
     try:
-        os.mkdir(f'{BASE_PATH}/exams/{exam}')
+        os.mkdir(f'{BASE_PATH}/databases/{DB.name}/exams/{exam}')
     except FileExistsError:
         pass
     # Possibly adjust filename
@@ -835,7 +906,7 @@ def create_xml(exam, filename='import.xml'):
     # Don't overwrite existing files
     version = 0
     pattern = re.compile(r'^.+?(?=[-0-9]*\.xml)')
-    while filename in os.listdir(f'{BASE_PATH}/exams/{exam}'):
+    while filename in os.listdir(f'{BASE_PATH}/databases/{DB.name}/exams/{exam}'):
         version += 1
         m = re.match(pattern, filename)
         filename = m.group() + f'-{version}.xml'
@@ -916,9 +987,9 @@ def create_xml(exam, filename='import.xml'):
 
     def questionlist_manual():
         # Category patterns for separated output
-        if Q_CATEGORIES[DB.name]:
+        if Q_CATEGORIES:
             cat_patterns = []
-            for c in Q_CATEGORIES[DB.name]:
+            for c in Q_CATEGORIES:
                 cat_patterns.append(re.compile(r'%s\d+' % (c)))
 
         # Create question list
@@ -942,7 +1013,7 @@ def create_xml(exam, filename='import.xml'):
                 questionlist.append(q_choice)
 
                 # Question list status
-                if Q_CATEGORIES[DB.name]:
+                if Q_CATEGORIES:
                     for r in cat_patterns:
                         print(list(filter(r.match, questionlist)))
                 else:
@@ -977,7 +1048,7 @@ def create_xml(exam, filename='import.xml'):
         q_el.set_additional(q_dict)
         root.append(q_el)
 
-    with open(f'{BASE_PATH}/exams/{exam}/{filename}', 'w') as wf:
+    with open(f'{BASE_PATH}/databases/{DB.name}/exams/{exam}/{filename}', 'w') as wf:
         wf.write('<?xml version="1.0" encoding="UTF-8"?>\n')
         wf.write((f'<!-- Estimated time: {info[0]}, '
                   f'average difficulty: {info[1]}, '

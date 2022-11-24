@@ -82,9 +82,9 @@ def add_question(json=None):
                     if bool(re.search(r'"\s{1}"', line)):
                         print(f"Potentially missing ':' for key at line {num}.")
         # Check for correct question naming scheme
-        if Q_CATEGORIES[DB.name]:
+        if Q_CATEGORIES:
             wrong_scheme = [
-                q['name'] for q in new_questions if q['name'][:-4] not in Q_CATEGORIES[DB.name]
+                q['name'] for q in new_questions if q['name'][:-4] not in Q_CATEGORIES
             ]
         else:
             wrong_scheme = []

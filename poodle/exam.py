@@ -140,7 +140,7 @@ def evaluate_exam(exam_name, stats_file, ratings_file):
     """
 
     # Check for correct exam name
-    if exam_name not in os.listdir(f'{BASE_PATH}/exams/'):
+    if exam_name not in os.listdir(f'{BASE_PATH}/databases/{DB.name}/exams/'):
         prompt = ('Warning! Exam name was not found in directory. ' +
                   f'Do you still wish to evaluate exam {exam_name}? (y/n)\n')
         if yesno(prompt) == 'y':
