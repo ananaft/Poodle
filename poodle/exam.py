@@ -35,10 +35,6 @@ def create_exam(exam, filename='import.xml'):
     # Write XML
     questionlist, info = create_xml(exam, filename)
 
-    # Write solution dofile
-    create_solution(exam, f'{BASE_PATH}/exams/{exam}/solution.do',
-                    f'{BASE_PATH}/solutions', questionlist)
-
     # Update database
     EXAMS.insert_one({
         'name': exam,
@@ -60,12 +56,11 @@ def create_exam(exam, filename='import.xml'):
     print('Database updated.')
 
 
-def create_testexam(exam, filename='import.xml', solution=False):
+def create_testexam(exam, filename='import.xml'):
     """
     This function is very similar to 'create_exam()' and is intended for
     experimenting with its features. It will not create any entries within the
-    database upon creation of the exam. The 'solution' argument decides whether
-    a dofile will be created or not. Apart from this, 'create_testexam()'
+    database upon creation of the exam. Apart from this, 'create_testexam()'
     functions exactly like 'create_exam()'.
 
     Arguments:
@@ -74,8 +69,6 @@ def create_testexam(exam, filename='import.xml', solution=False):
       Name of the exam within Moodle/Poodle.
     filename (str):
       Name of the output xml file.
-    solution (bool):
-      If set to True, function will write a solution dofile.
 
     ------------------------------
     Dependencies: config, core, re
@@ -83,10 +76,6 @@ def create_testexam(exam, filename='import.xml', solution=False):
 
     # Write XML
     questionlist, info = create_xml(exam, filename)
-
-    if solution:
-        create_solution(exam, f'{BASE_PATH}/exams/{exam}/solution.do',
-                        f'{BASE_PATH}/solutions', questionlist)
 
     print((
         f'\nTotal points: {info[2]}\n'

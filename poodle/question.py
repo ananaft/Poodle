@@ -204,9 +204,6 @@ def add_question(json=None):
                     new_question['single'] = False
             # Add question to collection
             result = QUESTIONS.insert_one(new_question)
-            # Ask if solution file template should be created
-            if yesno('Do you want to create a solution file template? (y/n)\n') == 'y':
-                create_do(new_question['name'])
     # Summary
     if type(result) == pymongo.results.InsertManyResult:
         added_list = [
@@ -347,73 +344,3 @@ def remove_question(question, archive=False):
         print('Question successfully removed.')
     else:
         print(f"Question '{question}' not in collection. Nothing to remove.")
-
-
-def create_do(questions):
-    """
-    This function will create a do-file solution template based on the questions
-    passed to it.
-
-    Arguments:
-    ----------
-    questions (str/list):
-      Can either be a single question's name as a string. Or a list of question
-      names.
-
-    -------------
-    Dependencies: os
-    """
-
-    def execute(question):
-        if f'{question}.do' in os.listdir('solutions/'):
-            print(f'Warning! Solution {question}.do already exists. ' +
-                  'No template generated.')
-        else:
-            # Add field
-            QUESTIONS.find_one_and_update(
-                {'name': question}, {'$set': {'solution_file': f'{question}.do'}}
-            )
-            # Format question text
-            question_split = QUESTIONS.find_one({'name': question})['question'].split()
-
-            counter = 0
-            for i in range(len(question_split)):
-                counter += 1
-                if counter < len(question_split):
-                    question_split[i] = question_split[i] + ' '
-
-            counter = 0
-            line = ''
-            formatted_question = ''
-            for i in range(len(question_split)):
-                counter += 1
-                if len(line + question_split[i]) <= 76:
-                    line = line + question_split[i]
-                else:
-                    formatted_question = formatted_question + '\t' + line + '\n'
-                    line = question_split[i]
-                if counter == len(question_split):
-                    formatted_question = formatted_question + '\t' + line
-            # Create file
-            wf = open(f'{BASE_PATH}/solutions/{question}.do', 'w')
-            wf.write(f'''/*
-Einführung in die computergestützte Datenanalyse, Marian Krawietz
-Moodle E-Assessment, Lukas Höttges
-Frage: {question}
-{formatted_question}
-*/
-
-version 15
-clear all
-
-use data1
-
-exit''')
-            wf.close()
-            print(f'Solution template successfully created for {question}.')
-
-    if type(questions) == list:
-        for q in questions:
-            execute(q)
-    else:
-        execute(questions)

@@ -1059,24 +1059,3 @@ def create_xml(exam, filename='import.xml'):
     print('Import file successfully created.')
 
     return questionlist, info
-
-
-def create_solution(exam_name, exam_path, do_path, questions):
-    wf = open(exam_path, 'w')
-    wf.write(f'// Lösungen Klausur "{exam_name}"\n\nversion 15' +
-             '\nuse ../../solutions/data1\nclear all\n\n')
-    for i, q in enumerate(questions):
-        try:
-            rf = open(do_path + q + '.do', 'r')
-            reading = rf.read()
-            rf.close()
-            m = re.search(r'(?<=use data1\n\n).+(?=\nexit)', reading, re.DOTALL)
-            exercise = m.group()
-            wf.write(f'* Aufgabe {i+1} ({q})\n\n{exercise}\n')
-        except FileNotFoundError:
-            wf.write(f'* Aufgabe {i+1} ({q})\n\ndi "No dofile found for {q}!"\n\n')
-            wf.write('\nexit')
-
-    wf.close()
-
-    print('Solution file successfully created.')
