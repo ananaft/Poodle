@@ -15,7 +15,7 @@ import copy
 from pprint import pprint
 
 
-def setup_db(db=DB.name):
+def setup_db(db=DB.name) -> None:
     # Check directories
     if db not in os.listdir(BASE_PATH + '/databases/'):
         os.mkdir(BASE_PATH + f'/databases/{db}')
@@ -35,54 +35,8 @@ def setup_db(db=DB.name):
         with open(DB_PATH + 'config.json', 'w') as f:
             json.dump(config, f, indent=2)
 
-    return None
 
-
-def apply_config():
-    db = DB.name
-    with open(BASE_PATH + f'/databases/{db}/config.json', 'r') as f:
-        config = json.load(f)
-    # Check for config keys
-    template = {
-        'NAME': f'{db}',
-        'Q_CATEGORIES': [],
-        'SHUFFLE': 1,
-        'RANDOM_ARR_SIZE': 100,
-        'COLLECTIONS': ['questions', 'exams']
-    }
-    for i, j in template.items():
-        if i not in config.keys():
-            config[i] = j
-    # Check for question categories
-    if config['Q_CATEGORIES'] == []:
-        db_categories = smart_input(
-            f'No question categories specified for database {db}!\n' +
-            'Please input list of categories you want to set for this database\n' +
-            'or input 0 if no predetermined categories are desired:\n'
-        )
-        config['Q_CATEGORIES'] = db_categories
-    # Update and reload JSON
-    with open(BASE_PATH + f'/databases/{db}/config.json', 'w') as f:
-        json.dump(config, f, indent=2)
-    with open(BASE_PATH + f'/databases/{db}/config.json', 'r') as f:
-        config = json.load(f)
-    # Set variables defined in JSON
-    global Q_CATEGORIES
-    global SHUFFLE
-    global RANDOM_ARR_SIZE
-    for c in config['COLLECTIONS']:
-        exec(f'global {c.upper()}')
-
-    Q_CATEGORIES = config['Q_CATEGORIES']
-    SHUFFLE = config['SHUFFLE']
-    RANDOM_ARR_SIZE = config['RANDOM_ARR_SIZE']
-    for c in config['COLLECTIONS']:
-        exec(f'{c.upper()} = DB.{c.lower()}')
-
-    return None
-
-
-def backup(db=DB.name):
+def backup(db=DB.name) -> None:
     """
     Dependencies: config, time, os
     """
@@ -95,7 +49,7 @@ def backup(db=DB.name):
                         f"--out=backup/{backup_time}"])
 
 
-def restore(path=None, db=DB.name):
+def restore(path=None, db=DB.name) -> None:
     """
     Dependencies: config, platform, subprocess
     """
@@ -490,7 +444,7 @@ class MultichoiceQuestion(MoodleQuestion):
             self.single = True
         try:
             self.single = q['single']
-        except:
+        except KeyError:
             pass
         self.loc.text = str(bool(self.single)).lower()
 

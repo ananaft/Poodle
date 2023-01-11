@@ -30,9 +30,7 @@ def list_functions():
 
 
 if __name__ == "__main__":
-    # Manage database configuration
     setup_db()
-    apply_config()
     # Backup routine
     if os.listdir(BASE_PATH + f'/databases/{DB.name}/backup/'):
         last_backup = sorted(os.listdir(BASE_PATH + f'/databases/{DB.name}/backup/'))[-1]
