@@ -5,6 +5,27 @@ import json
 
 BASE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
 
+def setup_db(db) -> None:
+    # Check directories
+    if db not in os.listdir(BASE_PATH + '/databases/'):
+        os.mkdir(BASE_PATH + f'/databases/{db}')
+    DB_PATH = BASE_PATH + f'/databases/{db}/'
+    for d in ['backup', 'exams', 'img', 'random_vars']:
+        if d not in os.listdir(DB_PATH):
+            os.mkdir(DB_PATH + d)
+    # Check JSON config
+    if 'config.json' not in os.listdir(DB_PATH):
+        config = {
+            'NAME': db,
+            'Q_CATEGORIES': [],
+            'SHUFFLE': 1,
+            'RANDOM_ARR_SIZE': 100,
+            'COLLECTIONS': ['questions', 'exams']
+        }
+        with open(DB_PATH + 'config.json', 'w') as f:
+            json.dump(config, f, indent=2)
+
+
 def apply_config():
     db = DB.name
     with open(BASE_PATH + f'/databases/{db}/config.json', 'r') as f:
@@ -22,11 +43,15 @@ def apply_config():
             config[i] = j
     # Check for question categories
     if config['Q_CATEGORIES'] == []:
-        db_categories = smart_input(
+        db_categories = input(
             f'No question categories specified for database {db}!\n' +
             'Please input list of categories you want to set for this database\n' +
             'or input 0 if no predetermined categories are desired:\n'
         )
+        try:
+            db_categories = eval(db_categories)
+        except SyntaxError:
+            pass
         config['Q_CATEGORIES'] = db_categories
     # Update and reload JSON
     with open(BASE_PATH + f'/databases/{db}/config.json', 'w') as f:
@@ -46,6 +71,7 @@ CLIENT = pymongo.MongoClient()
 DB = eval(f'CLIENT.{sys.argv[-1]}')
 QUESTIONS = DB.questions
 EXAMS = DB.exams
+setup_db(DB.name)
 Q_CATEGORIES, SHUFFLE, RANDOM_ARR_SIZE = apply_config()
 # Q_CATEGORIES = []
 # SHUFFLE = 1

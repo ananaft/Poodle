@@ -5,12 +5,15 @@ import ast
 import re
 import pymongo
 import time
+import pandas as pd
+import re
 
 
 def check_question(json_string: str) -> dict:
     """
     Used by add_json() to check for correct question formatting.
 
+    ------------------
     Dependencies: json
     """
     question_dict = json.loads(json_string)
@@ -202,11 +205,12 @@ def check_question(json_string: str) -> dict:
         return {'__question_name__': question_dict['name'], 'moodle_type': 'Missing'}
 
 
-def add_json(json_file: str) -> None:
+def add_json(json_file: str) -> tuple[None, str]:
     """
     Add questions to the database automatically by reading a JSON file.
     Questions need to be enclosed in list brackets.
 
+    ----------------------
     Dependencies: re, json
     """
 
@@ -225,9 +229,210 @@ def add_json(json_file: str) -> None:
 
     if not error_list:
         print('All questions added successfully!')
+        return None
     else:
         print('Some questions could not be added due to errors:')
         pprint(error_list)
+        return ''
+
+
+def add_excel(file_path: str) -> None:
+    """
+    Add questions to the database automatically by reading an XLS file.
+
+    Arguments:
+    ----------
+    file_path (str):
+      Path of XLS file to be read.
+
+    ------------------------------
+    Dependencies: pandas, json, re
+    """
+
+    def read_row(row: pd.Series, fields: dict, json_list: list) -> None:
+        # Turn rows into dicts and append to json_output
+        append_dict = {}
+        append_dict.update(
+            {f: row[f] for f in fields['general']}
+        )
+        append_dict.update(
+            {f: row[f] for f in fields['optional'] if row[f] != '[]' and row[f] != '{}'}
+        )
+        append_dict.update(
+            {f: row[f] for f in fields[row['moodle_type']]}
+        )
+        append_dict.update(
+            {'in_exams': {}}
+        )
+        # Evaluate list or dict strings
+        append_dict = {
+            x: (eval(y) if type(y) == str and re.match(r'^(\[|\{).+(\]|\})$', y)
+                else y)
+            for x,y in append_dict.items()
+        }
+
+        json_list.append(append_dict)
+
+
+    # Define fields that each moodle_type will contain
+    fields = {
+        'general': [
+            'name', 'moodle_type', 'family_type',
+            'difficulty', 'time_est', 'question'
+        ],
+        'optional': [
+            'img_files', 'tables'
+        ],
+        'multichoice': [
+            'correct_answers', 'false_answers', 'single'
+        ],
+        'numerical': [
+            'correct_answers', 'tolerance'
+        ],
+        'shortanswer': [
+            'correct_answers', 'usecase'
+        ],
+        'essay': [
+            'answer_files'
+        ],
+        'matching': [
+            'correct_answers', 'false_answers'
+        ],
+        'gapselect': [
+            'correct_answers', 'false_answers'
+        ],
+        'ddimageortext': [
+            'correct_answers', 'drops'
+        ],
+        'calculated': [
+            'correct_answers', 'tolerance', 'vars'
+        ]
+    }
+
+    json_output = []
+
+    df = pd.read_excel(file_path)
+    df.apply(lambda x: read_row(x, fields, json_output), axis=1)
+
+    # Create JSON file for add_json() in directory of XLS file
+    json_path = re.sub(r'(?<=\.)xlsx?$', 'json', file_path)
+    with open(json_path, 'w') as f:
+        json.dump(json_output, f)
+    # Delete JSON file if add_json() runs without errors
+    if add_json(json_path) != None:
+        os.remove(json_path)
+
+
+def create_template(file_path: str, file_type: str) -> None:
+    """
+    Creates a template file for later question import.
+
+    Arguments:
+    ----------
+    file_path (str):
+      Location where file will be saved.
+    file_type (str):
+      Accepted types are 'xls'/'excel' or 'json'.
+
+    ------------------------------
+    Dependencies: re, pandas, json
+    """
+
+    def fill_fields(moodle_type: dict) -> dict:
+
+        all_fields = moodle_type
+        all_fields['name'] = 'X'
+        all_fields['family_type'] = 'X'
+        all_fields['points'] = 0
+        all_fields['difficulty'] = 0
+        all_fields['time_est'] = 0
+        all_fields['img_files'] = []
+        all_fields['tables'] = {}
+        all_fields['question'] = 'X'
+
+        optional_fields = [
+            'correct_answers', 'false_answers', 'single', 'tolerance',
+            'usecase', 'answer_files', 'drops', 'vars'
+        ]
+        for f in optional_fields:
+            if f not in all_fields.keys():
+                all_fields[f] = ''
+
+        return all_fields
+
+    # Define template fields for each moodle_type
+    multichoice = {
+        'moodle_type': 'multichoice',
+        'correct_answers': ['X', '...'],
+        'false_answers': ['X', '...'],
+        'single': 1
+    }
+    numerical = {
+        'moodle_type': 'numerical',
+        'correct_answers': ['X', '...'],
+        'tolerance': 0
+    }
+    shortanswer = {
+        'moodle_type': 'shortanswer',
+        'correct_answers': ['X', '...'],
+        'usecase': 0
+    }
+    essay = {
+        'moodle_type': 'essay',
+        'answer_files': [0, 0]
+    }
+    matching = {
+        'moodle_type': 'matching',
+        'correct_answers': {'X1': 'Y1', '...': '...'},
+        'false_answers': ['X', '...']
+    }
+    gapselect = {
+        'moodle_type': 'gapselect',
+        'correct_answers': {'1': ['X'], '...': ['...']},
+        'false_answers': {'1': ['X', '...'], '...': ['...']}
+    }
+    ddimageortext = {
+        'moodle_type': 'ddimageortext',
+        'correct_answers': ['X', '...'],
+        'drops': {'1': [0, 0], '...': [0, 0]}
+    }
+    calculated = {
+        'moodle_type': 'calculated',
+        'correct_answers': ['X', '...'],
+        'tolerance': [0, 'X', 0],
+        'vars': ['X', '...']
+    }
+
+    moodle_types = [
+        fill_fields(multichoice), fill_fields(numerical), fill_fields(shortanswer),
+        fill_fields(essay), fill_fields(matching), fill_fields(gapselect),
+        fill_fields(ddimageortext), fill_fields(calculated)
+    ]
+
+    fields = [
+        'name', 'moodle_type', 'family_type', 'difficulty', 'time_est',
+        'img_files', 'tables', 'question', 'correct_answers', 'false_answers',
+        'single', 'tolerance', 'usecase', 'answer_files', 'drops', 'vars'
+    ]
+
+    if  bool(re.match('xls', file_type.lower())) or bool(re.match('excel', file_type.lower())):
+        df = pd.DataFrame({
+            f: [m[f] for m in moodle_types] for f in fields
+        })
+        df.to_excel(f'{file_path}/template.xlsx', index=False)
+    elif bool(re.match('json', file_type.lower())):
+        # Remove empty fields
+        moodle_types = [
+            {x: y for x,y in m.items() if y != ''} for m in moodle_types
+        ]
+        # Add in_exams field
+        for m in moodle_types:
+            m['in_exams'] = {}
+        # Write to file
+        with open(f'{file_path}/template.json', 'w') as f:
+            json.dump(moodle_types, f, indent=2)
+    else:
+        print(f'Unknown file type: {file_type}')
 
 
 # def add_question():

@@ -15,27 +15,6 @@ import copy
 from pprint import pprint
 
 
-def setup_db(db=DB.name) -> None:
-    # Check directories
-    if db not in os.listdir(BASE_PATH + '/databases/'):
-        os.mkdir(BASE_PATH + f'/databases/{db}')
-    DB_PATH = BASE_PATH + f'/databases/{db}/'
-    for d in ['backup', 'exams', 'img', 'random_vars']:
-        if d not in os.listdir(DB_PATH):
-            os.mkdir(DB_PATH + d)
-    # Check JSON config
-    if 'config.json' not in os.listdir(DB_PATH):
-        config = {
-            'NAME': db,
-            'Q_CATEGORIES': [],
-            'SHUFFLE': 1,
-            'RANDOM_ARR_SIZE': 100,
-            'COLLECTIONS': ['questions', 'exams']
-        }
-        with open(DB_PATH + 'config.json', 'w') as f:
-            json.dump(config, f, indent=2)
-
-
 def backup(db=DB.name) -> None:
     """
     Dependencies: config, time, os
