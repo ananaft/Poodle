@@ -191,6 +191,9 @@ def check_question(json_string: str) -> dict:
             case 'essay':
                 result = check_essay(question_dict)
                 return dict(sorted(result.items()))
+            case 'matching':
+                result = check_matching(question_dict)
+                return dict(sorted(result.items()))
             case 'gapselect':
                 result = check_gapselect(question_dict)
                 return dict(sorted(result.items()))
