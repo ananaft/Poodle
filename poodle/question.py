@@ -225,6 +225,11 @@ def add_json(json_file: str) -> tuple[None, str]:
     for q in question_list:
         check_result = check_question(json.dumps(q))
         if not check_result:
+            # Check for empty img_files/tables fields
+            if 'img_files' in q.keys() and q['img_files'] == []:
+                q.pop('img_files')
+            if 'tables' in q.keys() and q['tables'] == {}:
+                q.pop('tables')
             QUESTIONS.insert_one(q)
         else:
             error_list.append(check_result)
@@ -257,6 +262,7 @@ def add_excel(file_path: str) -> None:
         append_dict.update(
             {f: row[f] for f in fields['general']}
         )
+        # Remove empty fields
         append_dict.update(
             {f: row[f] for f in fields['optional'] if row[f] != '[]' and row[f] != '{}'}
         )
@@ -266,9 +272,17 @@ def add_excel(file_path: str) -> None:
         append_dict.update(
             {'in_exams': {}}
         )
+        ## Fix possible wrong quotation marks
+        def quote_fix(field_value: str) -> str:
+            regex = '[\u201e\u201c\u201f\u201d\u275d\u275e\u2e42\u301d\u301e\u301f\uff02]'
+            return re.sub(regex, '"', field_value)
+        append_dict = {
+            x: (quote_fix(y) if type(y) == str else y)
+            for x,y in append_dict.items()
+        }
         # Evaluate list or dict strings
         append_dict = {
-            x: (eval(y) if type(y) == str and re.match(r'^(\[|\{).+(\]|\})$', y)
+            x: (eval(y) if type(y) == str and re.match(r'^(\[|\{).*(\]|\})$', y)
                 else y)
             for x,y in append_dict.items()
         }
@@ -279,7 +293,7 @@ def add_excel(file_path: str) -> None:
     # Define fields that each moodle_type will contain
     fields = {
         'general': [
-            'name', 'moodle_type', 'family_type',
+            'name', 'moodle_type', 'family_type', 'points',
             'difficulty', 'time_est', 'question'
         ],
         'optional': [
@@ -319,9 +333,9 @@ def add_excel(file_path: str) -> None:
     # Create JSON file for add_json() in directory of XLS file
     json_path = re.sub(r'(?<=\.)xlsx?$', 'json', file_path)
     with open(json_path, 'w') as f:
-        json.dump(json_output, f)
+        json.dump(json_output, f, indent=2)
     # Delete JSON file if add_json() runs without errors
-    if add_json(json_path) != None:
+    if add_json(json_path) == None:
         os.remove(json_path)
 
 
@@ -365,44 +379,44 @@ def create_template(file_path: str, file_type: str) -> None:
     # Define template fields for each moodle_type
     multichoice = {
         'moodle_type': 'multichoice',
-        'correct_answers': ['X', '...'],
-        'false_answers': ['X', '...'],
+        'correct_answers': '["X", "..."]',
+        'false_answers': '["X", "..."]',
         'single': 1
     }
     numerical = {
         'moodle_type': 'numerical',
-        'correct_answers': ['X', '...'],
+        'correct_answers': '["X", "..."]',
         'tolerance': 0
     }
     shortanswer = {
         'moodle_type': 'shortanswer',
-        'correct_answers': ['X', '...'],
+        'correct_answers': '["X", "..."]',
         'usecase': 0
     }
     essay = {
         'moodle_type': 'essay',
-        'answer_files': [0, 0]
+        'answer_files': '[0, 0]'
     }
     matching = {
         'moodle_type': 'matching',
-        'correct_answers': {'X1': 'Y1', '...': '...'},
-        'false_answers': ['X', '...']
+        'correct_answers': '{"X1": "Y1", "...": "..."}',
+        'false_answers': '["X", "..."]'
     }
     gapselect = {
         'moodle_type': 'gapselect',
-        'correct_answers': {'1': ['X'], '...': ['...']},
-        'false_answers': {'1': ['X', '...'], '...': ['...']}
+        'correct_answers': '{"1": ["X"], "...": ["..."]}',
+        'false_answers': '{"1": ["X", "..."], "...": ["..."]}'
     }
     ddimageortext = {
         'moodle_type': 'ddimageortext',
-        'correct_answers': ['X', '...'],
-        'drops': {'1': [0, 0], '...': [0, 0]}
+        'correct_answers': '["X", "..."]',
+        'drops': '{"1": [0, 0], "...": [0, 0]}'
     }
     calculated = {
         'moodle_type': 'calculated',
-        'correct_answers': ['X', '...'],
-        'tolerance': [0, 'X', 0],
-        'vars': ['X', '...']
+        'correct_answers': '["X", "..."]',
+        'tolerance': '[0, "X", 0]',
+        'vars': '["X", "..."]'
     }
 
     moodle_types = [
@@ -412,7 +426,7 @@ def create_template(file_path: str, file_type: str) -> None:
     ]
 
     fields = [
-        'name', 'moodle_type', 'family_type', 'difficulty', 'time_est',
+        'name', 'moodle_type', 'family_type', 'points', 'difficulty', 'time_est',
         'img_files', 'tables', 'question', 'correct_answers', 'false_answers',
         'single', 'tolerance', 'usecase', 'answer_files', 'drops', 'vars'
     ]
