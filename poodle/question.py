@@ -6,6 +6,7 @@ import re
 import pymongo
 import time
 import pandas as pd
+import numpy as np
 import re
 import json
 
@@ -252,8 +253,8 @@ def add_excel(file_path: str) -> None:
     file_path (str):
       Path of XLS file to be read.
 
-    ------------------------------
-    Dependencies: pandas, json, re
+    -------------------------------------
+    Dependencies: pandas, numpy, json, re
     """
 
     def read_row(row: pd.Series, fields: dict, json_list: list) -> None:
@@ -262,25 +263,37 @@ def add_excel(file_path: str) -> None:
         append_dict.update(
             {f: row[f] for f in fields['general']}
         )
-        # Remove empty fields
+        # Ignore empty fields
         append_dict.update(
             {f: row[f] for f in fields['optional'] if row[f] != '[]' and row[f] != '{}'}
         )
+        # Add fields depending on moodle_type
         append_dict.update(
             {f: row[f] for f in fields[row['moodle_type']]}
         )
+        # Convert single and usecase to int
+        if not np.isnan(row['single']):
+            append_dict.update(
+                {'single': int(row['single'])}
+            )
+        if not np.isnan(row['usecase']):
+            append_dict.update(
+                {'usecase': int(row['usecase'])}
+            )
         append_dict.update(
             {'in_exams': {}}
         )
-        ## Fix possible wrong quotation marks
+        # Fix possible wrong unicode quotation marks
         def quote_fix(field_value: str) -> str:
-            regex = '[\u201e\u201c\u201f\u201d\u275d\u275e\u2e42\u301d\u301e\u301f\uff02]'
-            return re.sub(regex, '"', field_value)
+            quote_regex = '[\u201e\u201c\u201f\u201d\u275d\u275e\u2e42\u301d\u301e\u301f\uff02]'
+            return re.sub(quote_regex, '"', field_value)
         append_dict = {
             x: (quote_fix(y) if type(y) == str else y)
             for x,y in append_dict.items()
         }
-        # Evaluate list or dict strings
+        # Fix unescaped quotation marks
+        # Fix missing quotation marks in lists/dicts
+        # Evaluate list/dict strings
         append_dict = {
             x: (eval(y) if type(y) == str and re.match(r'^(\[|\{).*(\]|\})$', y)
                 else y)
