@@ -3,6 +3,7 @@ from core import *
 from exam import *
 from question import *
 from viewing import *
+from gui import *
 from experimental import *
 
 import pymongo
