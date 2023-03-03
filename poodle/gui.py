@@ -142,19 +142,17 @@ class QuestionView(Gtk.Notebook):
 
         super().__init__()
 
-        self.question_grid = GeneralQuestionGrid(question_content)
+        match question_content['moodle_type']:
+            case 'multichoice':
+                self.question_grid = MultiChoiceQuestionGrid(question_content)
+            case _:
+                raise Exception
         self.append_page(self.question_grid, Gtk.Label(label='Question'))
 
         self.textview = Gtk.TextView()
         self.textbuffer = self.textview.get_buffer()
         self.textbuffer.set_text(pformat(question_content, indent=4))
         self.append_page(self.textview, Gtk.Label(label='Raw'))
-
-        # match question_content['moodle_type']:
-            # case 'multichoice':
-                # return 1
-            # case _:
-                # return 0
 
 
 class GeneralQuestionGrid(Gtk.Grid):
@@ -231,32 +229,93 @@ class GeneralQuestionGrid(Gtk.Grid):
         self.attach_next_to(self.in_exams_label, self.family_type_label,
                             Gtk.PositionType.BOTTOM, 1, 1)
 
-        self.in_exams_field = SimpleDict(question_content['in_exams'])
+        self.in_exams_field = SimpleDictGrid(question_content['in_exams'])
         self.attach_next_to(self.in_exams_field, self.in_exams_label,
                             Gtk.PositionType.RIGHT, 2, 1)
 
 
-class SimpleDict(Gtk.Grid):
+class MultiChoiceQuestionGrid(GeneralQuestionGrid):
 
-    def __init__(self, dictionary: dict):
+    def __init__(self, question_content: dict):
+
+        super().__init__(question_content)
+
+        self.insert_row(2)
+        self.correct_answers_label = Gtk.Label(label='correct_answers')
+        self.attach(self.correct_answers_label, 0, 2, 1, 1)
+        self.correct_answers_field = SimpleListGrid(question_content['correct_answers'])
+        self.attach_next_to(self.correct_answers_field, self.correct_answers_label,
+                            Gtk.PositionType.RIGHT, 2, 1)
+
+        self.insert_row(3)
+        self.false_answers_label = Gtk.Label(label='false_answers')
+        self.attach(self.false_answers_label, 0, 3, 1, 1)
+        self.false_answers_field = SimpleListGrid(question_content['false_answers'])
+        self.attach_next_to(self.false_answers_field, self.false_answers_label,
+                            Gtk.PositionType.RIGHT, 2, 1)
+
+        self.insert_row(4)
+        self.single_label = Gtk.Label(label='single')
+        self.attach(self.single_label, 0, 4, 1, 1)
+        self.single_field = Gtk.Entry()
+        self.single_field.set_hexpand(True)
+        self.single_field.set_text(str(question_content['single']))
+        self.attach_next_to(self.single_field, self.single_label,
+                            Gtk.PositionType.RIGHT, 2, 1)
+
+
+class SimpleListGrid(Gtk.Grid):
+
+    def __init__(self, list_field: list):
+
+        super().__init__()
+        self.set_row_spacing(10)
+
+        for n, i in enumerate(list_field):
+            entry = Gtk.Entry()
+            entry.set_hexpand(True)
+            entry.set_text(str(i))
+            self.attach(entry, 0, n, 1, 1)
+
+        self.n_rows = len(list_field)
+
+        self.add_button = Gtk.Button(label='+')
+        self.add_button.connect('clicked', self.add_row)
+        self.attach_next_to(self.add_button, self.get_children()[-1],
+                            Gtk.PositionType.BOTTOM, 1, 1)
+
+    def add_row(self, button):
+
+        entry = Gtk.Entry()
+        entry.set_hexpand(True)
+        self.insert_row(self.n_rows)
+        self.attach(entry, 0, self.n_rows, 1, 1)
+        entry.show()
+
+        self.n_rows += 1
+
+
+class SimpleDictGrid(Gtk.Grid):
+
+    def __init__(self, dict_field: dict):
 
         super().__init__()
         self.set_column_spacing(50)
         self.set_row_spacing(10)
 
-        for n, key in enumerate(dictionary.keys()):
+        for n, key in enumerate(dict_field.keys()):
             entry = Gtk.Entry()
             entry.set_hexpand(True)
             entry.set_text(key)
             self.attach(entry, 0, n, 1, 1)
 
-        for n, value in enumerate(dictionary.values()):
+        for n, value in enumerate(dict_field.values()):
             entry = Gtk.Entry()
             entry.set_hexpand(True)
             entry.set_text(str(value))
             self.attach(entry, 1, n, 1, 1)
 
-        self.n_rows = len(dictionary.keys())
+        self.n_rows = len(dict_field.keys())
 
         self.add_button = Gtk.Button(label='+')
         self.add_button.connect('clicked', self.add_row)
