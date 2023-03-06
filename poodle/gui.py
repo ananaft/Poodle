@@ -61,11 +61,14 @@ class QuestionTable(Gtk.TreeView):
         # question_content = QUESTIONS.find_one({'name': question_name})
         question_content = {
             'name': 'mytest0199',
-            'moodle_type': 'multichoice',
+            'moodle_type': 'gapselect',
             'question': 'Setzen Sie die Einkommensvariable in Fällen, in denen sie 0 ist, auf Missing. Sortieren Sie den Datensatz aufsteigend nach Einkommen. Ermitteln Sie das <i>Haushaltseinkommen</i> der Person mit dem fünftniedrigsten Einkommen.',
-            'correct_answers': ['Richtig'],
-            'false_answers': ['Falsch'],
-            'single': 1,
+            'correct_answers': {'1': ['Richtig'],
+                                '2': ['Auch richtig']},
+            'false_answers': {'1': ['Falsch'],
+                              '2': ['Muss man schauen',
+                                    'Weiß ich nicht']},
+            # 'single': 1,
             'points': 4,
             'difficulty': 1,
             'time_est': 1,
@@ -145,6 +148,20 @@ class QuestionView(Gtk.Notebook):
         match question_content['moodle_type']:
             case 'multichoice':
                 self.question_grid = MultiChoiceQuestionGrid(question_content)
+            case 'numerical':
+                self.question_grid = NumericalQuestionGrid(question_content)
+            case 'shortanswer':
+                self.question_grid = ShortanswerQuestionGrid(question_content)
+            case 'essay':
+                self.question_grid = EssayQuestionGrid(question_content)
+            case 'matching':
+                self.question_grid = MatchingQuestionGrid(question_content)
+            case 'gapselect':
+                self.question_grid = GapselectQuestionGrid(question_content)
+            case 'ddimageortext':
+                self.question_grid = DDImageOrTextQuestionGrid(question_content)
+            case 'calculated':
+                self.question_grid = CalculatedQuestionGrid(question_content)
             case _:
                 raise Exception
         self.append_page(self.question_grid, Gtk.Label(label='Question'))
@@ -169,68 +186,81 @@ class GeneralQuestionGrid(Gtk.Grid):
         self.name_field = Gtk.Entry()
         self.name_field.set_hexpand(True)
         self.name_field.set_text(question_content['name'])
-        self.name_field.set_editable(False) ## ~"free edit" button changes this
-        self.attach_next_to(self.name_field, self.name_label,
+        self.name_field.set_editable(False)
+        self.attach_next_to(self.name_field,
+                            self.name_label,
                             Gtk.PositionType.RIGHT, 2, 1)
 
         self.question_label = Gtk.Label(label='question')
-        self.attach_next_to(self.question_label, self.name_label,
+        self.attach_next_to(self.question_label,
+                            self.name_label,
                             Gtk.PositionType.BOTTOM, 1, 1)
 
         self.question_field = Gtk.TextView(wrap_mode=Gtk.WrapMode(3))
         self.question_field.set_hexpand(True)
         self.question_buffer = self.question_field.get_buffer()
         self.question_buffer.set_text(question_content['question'])
-        self.attach_next_to(self.question_field, self.question_label,
+        self.attach_next_to(self.question_field,
+                            self.question_label,
                             Gtk.PositionType.RIGHT, 2, 1)
 
         self.points_label = Gtk.Label(label='points')
-        self.attach_next_to(self.points_label, self.question_label,
+        self.attach_next_to(self.points_label,
+                            self.question_label,
                             Gtk.PositionType.BOTTOM, 1, 1)
 
         self. points_field = Gtk.Entry()
         self.points_field.set_hexpand(True)
         self.points_field.set_text(str(question_content['points']))
-        self.attach_next_to(self.points_field, self.points_label,
+        self.attach_next_to(self.points_field,
+                            self.points_label,
                             Gtk.PositionType.RIGHT, 2, 1)
 
         self.difficulty_label = Gtk.Label(label='difficulty')
-        self.attach_next_to(self.difficulty_label, self.points_label,
+        self.attach_next_to(self.difficulty_label,
+                            self.points_label,
                             Gtk.PositionType.BOTTOM, 1, 1)
 
         self. difficulty_field = Gtk.Entry()
         self.difficulty_field.set_hexpand(True)
         self.difficulty_field.set_text(str(question_content['difficulty']))
-        self.attach_next_to(self.difficulty_field, self.difficulty_label,
+        self.attach_next_to(self.difficulty_field,
+                            self.difficulty_label,
                             Gtk.PositionType.RIGHT, 2, 1)
 
         self.time_est_label = Gtk.Label(label='time_est')
-        self.attach_next_to(self.time_est_label, self.difficulty_label,
+        self.attach_next_to(self.time_est_label,
+                            self.difficulty_label,
                             Gtk.PositionType.BOTTOM, 1, 1)
 
         self. time_est_field = Gtk.Entry()
         self.time_est_field.set_hexpand(True)
         self.time_est_field.set_text(str(question_content['time_est']))
-        self.attach_next_to(self.time_est_field, self.time_est_label,
+        self.attach_next_to(self.time_est_field,
+                            self.time_est_label,
                             Gtk.PositionType.RIGHT, 2, 1)
 
         self.family_type_label = Gtk.Label(label='family_type')
-        self.attach_next_to(self.family_type_label, self.time_est_label,
+        self.attach_next_to(self.family_type_label,
+                            self.time_est_label,
                             Gtk.PositionType.BOTTOM, 1, 1)
 
         self.family_type_field = Gtk.Entry()
         self.family_type_field.set_hexpand(True)
         self.family_type_field.set_text(question_content['family_type'])
         self.family_type_field.set_editable(False)
-        self.attach_next_to(self.family_type_field, self.family_type_label,
+        self.attach_next_to(self.family_type_field,
+                            self.family_type_label,
                             Gtk.PositionType.RIGHT, 2, 1)
 
         self.in_exams_label = Gtk.Label(label='in_exams')
-        self.attach_next_to(self.in_exams_label, self.family_type_label,
+        self.attach_next_to(self.in_exams_label,
+                            self.family_type_label,
                             Gtk.PositionType.BOTTOM, 1, 1)
 
-        self.in_exams_field = SimpleDictGrid(question_content['in_exams'])
-        self.attach_next_to(self.in_exams_field, self.in_exams_label,
+        self.in_exams_field = SimpleDictGrid(question_content['in_exams'], False)
+        self.attach_next_to(self.in_exams_field,
+                            self.in_exams_label,
                             Gtk.PositionType.RIGHT, 2, 1)
 
 
@@ -243,15 +273,21 @@ class MultiChoiceQuestionGrid(GeneralQuestionGrid):
         self.insert_row(2)
         self.correct_answers_label = Gtk.Label(label='correct_answers')
         self.attach(self.correct_answers_label, 0, 2, 1, 1)
-        self.correct_answers_field = SimpleListGrid(question_content['correct_answers'])
-        self.attach_next_to(self.correct_answers_field, self.correct_answers_label,
+        self.correct_answers_field = SimpleListGrid(
+            question_content['correct_answers'], True
+        )
+        self.attach_next_to(self.correct_answers_field,
+                            self.correct_answers_label,
                             Gtk.PositionType.RIGHT, 2, 1)
 
         self.insert_row(3)
         self.false_answers_label = Gtk.Label(label='false_answers')
         self.attach(self.false_answers_label, 0, 3, 1, 1)
-        self.false_answers_field = SimpleListGrid(question_content['false_answers'])
-        self.attach_next_to(self.false_answers_field, self.false_answers_label,
+        self.false_answers_field = SimpleListGrid(
+            question_content['false_answers'], True
+        )
+        self.attach_next_to(self.false_answers_field,
+                            self.false_answers_label,
                             Gtk.PositionType.RIGHT, 2, 1)
 
         self.insert_row(4)
@@ -260,13 +296,145 @@ class MultiChoiceQuestionGrid(GeneralQuestionGrid):
         self.single_field = Gtk.Entry()
         self.single_field.set_hexpand(True)
         self.single_field.set_text(str(question_content['single']))
-        self.attach_next_to(self.single_field, self.single_label,
+        self.attach_next_to(self.single_field,
+                            self.single_label,
+                            Gtk.PositionType.RIGHT, 2, 1)
+
+
+class NumericalQuestionGrid(GeneralQuestionGrid):
+
+    def __init__(self, question_content: dict):
+
+        super().__init__(question_content)
+
+        self.insert_row(2)
+        self.correct_answers_label = Gtk.Label(label='correct_answers')
+        self.attach(self.correct_answers_label, 0, 2, 1, 1)
+        self.correct_answers_field = SimpleListGrid(
+            question_content['correct_answers'], True
+        )
+        self.attach_next_to(self.correct_answers_field,
+                            self.correct_answers_label,
+                            Gtk.PositionType.RIGHT, 2, 1)
+
+        self.insert_row(3)
+        self.tolerance_label = Gtk.Label(label='tolerance')
+        self.attach(self.tolerance_label, 0, 3, 1, 1)
+        self.tolerance_field = Gtk.Entry()
+        self.tolerance_field.set_hexpand(True)
+        self.tolerance_field.set_text(str(question_content['tolerance']))
+        self.attach_next_to(self.tolerance_field,
+                            self.tolerance_label,
+                            Gtk.PositionType.RIGHT, 2, 1)
+
+
+class ShortanswerQuestionGrid(GeneralQuestionGrid):
+
+    def __init__(self, question_content: dict):
+
+        super().__init__(question_content)
+
+        self.insert_row(2)
+        self.correct_answers_label = Gtk.Label(label='correct_answers')
+        self.attach(self.correct_answers_label, 0, 2, 1, 1)
+        self.correct_answers_field = SimpleListGrid(
+            question_content['correct_answers'], True
+        )
+        self.attach_next_to(self.correct_answers_field,
+                            self.correct_answers_label,
+                            Gtk.PositionType.RIGHT, 2, 1)
+
+        self.insert_row(3)
+        self.usecase_label = Gtk.Label(label='usecase')
+        self.attach(self.usecase_label, 0, 3, 1, 1)
+        self.usecase_field = Gtk.Entry()
+        self.usecase_field.set_hexpand(True)
+        self.usecase_field.set_text(str(question_content['usecase']))
+        self.attach_next_to(self.usecase_field,
+                            self.usecase_label,
+                            Gtk.PositionType.RIGHT, 2, 1)
+
+
+class EssayQuestionGrid(GeneralQuestionGrid):
+
+    def __init__(self, question_content: dict):
+
+        super().__init__(question_content)
+
+        self.insert_row(2)
+        self.answer_files_label = Gtk.Label(label='answer_files')
+        self.attach(self.answer_files_label, 0, 2, 1, 1)
+        self.answer_files_field_0 = Gtk.Entry()
+        self.answer_files_field_0.set_hexpand(True)
+        self.answer_files_field_0.set_text(str(question_content['answer_files'][0]))
+        self.attach_next_to(self.answer_files_field_0,
+                            self.answer_files_label,
+                            Gtk.PositionType.RIGHT, 2, 1)
+        self.answer_files_field_1 = Gtk.Entry()
+        self.answer_files_field_1.set_hexpand(True)
+        self.answer_files_field_1.set_text(str(question_content['answer_files'][1]))
+        self.attach_next_to(self.answer_files_field_1,
+                            self.answer_files_field_0,
+                            Gtk.PositionType.BOTTOM, 2, 1)
+
+
+class MatchingQuestionGrid(GeneralQuestionGrid):
+
+    def __init__(self, question_content: dict):
+
+        super().__init__(question_content)
+
+        self.insert_row(2)
+        self.correct_answers_label = Gtk.Label(label='correct_answers')
+        self.attach(self.correct_answers_label, 0, 2, 1, 1)
+        self.correct_answers_field = SimpleDictGrid(
+            question_content['correct_answers'], True
+        )
+        self.attach_next_to(self.correct_answers_field,
+                            self.correct_answers_label,
+                            Gtk.PositionType.RIGHT, 2, 1)
+
+        self.insert_row(3)
+        self.false_answers_label = Gtk.Label(label='false_answers')
+        self.attach(self.false_answers_label, 0, 3, 1, 1)
+        self.false_answers_field = SimpleListGrid(
+            question_content['false_answers'], True
+        )
+        self.attach_next_to(self.false_answers_field,
+                            self.false_answers_label,
+                            Gtk.PositionType.RIGHT, 2, 1)
+
+
+class GapselectQuestionGrid(GeneralQuestionGrid):
+
+    def __init__(self, question_content: dict):
+
+        super().__init__(question_content)
+
+        self.insert_row(2)
+        self.correct_answers_label = Gtk.Label(label='correct_answers')
+        self.attach(self.correct_answers_label, 0, 2, 1, 1)
+        self.correct_answers_field = DictListGrid(
+            question_content['correct_answers'], True
+        )
+        self.attach_next_to(self.correct_answers_field,
+                            self.correct_answers_label,
+                            Gtk.PositionType.RIGHT, 2, 1)
+
+        self.insert_row(3)
+        self.false_answers_label = Gtk.Label(label='false_answers')
+        self.attach(self.false_answers_label, 0, 3, 1, 1)
+        self.false_answers_field = DictListGrid(
+            question_content['false_answers'], True
+        )
+        self.attach_next_to(self.false_answers_field,
+                            self.false_answers_label,
                             Gtk.PositionType.RIGHT, 2, 1)
 
 
 class SimpleListGrid(Gtk.Grid):
 
-    def __init__(self, list_field: list):
+    def __init__(self, list_field: list, editable: bool):
 
         super().__init__()
         self.set_row_spacing(10)
@@ -275,14 +443,15 @@ class SimpleListGrid(Gtk.Grid):
             entry = Gtk.Entry()
             entry.set_hexpand(True)
             entry.set_text(str(i))
+            entry.set_editable(editable)
             self.attach(entry, 0, n, 1, 1)
 
         self.n_rows = len(list_field)
 
-        self.add_button = Gtk.Button(label='+')
-        self.add_button.connect('clicked', self.add_row)
-        self.attach_next_to(self.add_button, self.get_children()[-1],
-                            Gtk.PositionType.BOTTOM, 1, 1)
+        if editable:
+            self.add_button = Gtk.Button(label='+')
+            self.add_button.connect('clicked', self.add_row)
+            self.attach(self.add_button, 0, self.n_rows, 1, 1)
 
     def add_row(self, button):
 
@@ -297,7 +466,7 @@ class SimpleListGrid(Gtk.Grid):
 
 class SimpleDictGrid(Gtk.Grid):
 
-    def __init__(self, dict_field: dict):
+    def __init__(self, dict_field: dict, editable: bool):
 
         super().__init__()
         self.set_column_spacing(50)
@@ -307,20 +476,22 @@ class SimpleDictGrid(Gtk.Grid):
             entry = Gtk.Entry()
             entry.set_hexpand(True)
             entry.set_text(key)
+            entry.set_editable(editable)
             self.attach(entry, 0, n, 1, 1)
 
         for n, value in enumerate(dict_field.values()):
             entry = Gtk.Entry()
             entry.set_hexpand(True)
             entry.set_text(str(value))
+            entry.set_editable(editable)
             self.attach(entry, 1, n, 1, 1)
 
         self.n_rows = len(dict_field.keys())
 
-        self.add_button = Gtk.Button(label='+')
-        self.add_button.connect('clicked', self.add_row)
-        self.attach_next_to(self.add_button, self.get_children()[-2],
-                            Gtk.PositionType.BOTTOM, 1, 1)
+        if editable:
+            self.add_button = Gtk.Button(label='+')
+            self.add_button.connect('clicked', self.add_row)
+            self.attach(self.add_button, 0, self.n_rows, 1, 1)
 
     def add_row(self, button):
 
@@ -332,9 +503,52 @@ class SimpleDictGrid(Gtk.Grid):
 
         value_entry = Gtk.Entry()
         value_entry.set_hexpand(True)
-        self.attach_next_to(value_entry, key_entry,
+        self.attach_next_to(value_entry,
+                            key_entry,
                             Gtk.PositionType.RIGHT, 1, 1)
         value_entry.show()
+
+        self.n_rows += 1
+
+
+class DictListGrid(Gtk.Grid):
+
+    def __init__(self, dict_field: dict, editable: bool):
+
+        super().__init__()
+        self.set_column_spacing(50)
+        self.set_row_spacing(10)
+
+        for n, key in enumerate(dict_field.keys()):
+            entry = Gtk.Entry()
+            entry.set_hexpand(True)
+            entry.set_text(key)
+            entry.set_editable(editable)
+            self.attach(entry, 0, n, 1, 1)
+            self.attach_next_to(SimpleListGrid(dict_field[key], True),
+                                entry,
+                                Gtk.PositionType.RIGHT, 1, 1)
+        
+        self.n_rows = len(dict_field.keys())
+
+        if editable:
+            self.add_button = Gtk.Button(label='+')
+            self.add_button.connect('clicked', self.add_row)
+            self.attach(self.add_button, 0, self.n_rows, 1, 1)
+
+    def add_row(self, button):
+
+        key_entry = Gtk.Entry()
+        key_entry.set_hexpand(True)
+        self.insert_row(self.n_rows)
+        self.attach(key_entry, 0, self.n_rows, 1, 1)
+        key_entry.show()
+
+        list_entry = SimpleListGrid([''], True)
+        self.attach_next_to(list_entry,
+                            key_entry,
+                            Gtk.PositionType.RIGHT, 1, 1)
+        list_entry.show_all()
 
         self.n_rows += 1
 
