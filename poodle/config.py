@@ -66,13 +66,47 @@ def apply_config():
     return Q_CATEGORIES, SHUFFLE, RANDOM_ARR_SIZE
 
 
-# Global variables
+## Global variables
 CLIENT = pymongo.MongoClient()
 DB = eval(f'CLIENT.{sys.argv[-1]}')
 QUESTIONS = DB.questions
 EXAMS = DB.exams
+
 setup_db(DB.name)
 Q_CATEGORIES, SHUFFLE, RANDOM_ARR_SIZE = apply_config()
-# Q_CATEGORIES = []
-# SHUFFLE = 1
-# RANDOM_ARR_SIZE = 100
+
+# Expected value types for question keys
+KEY_TYPES = {
+    'general': {
+        'name': str, 'question': str, 'family_type': str, 'points': int,
+        'in_exams': dict, 'time_est': int, 'difficulty': int
+    },
+    'optional': {
+        'img_files': list, 'tables': dict
+    },
+    # Moodle types
+    'multichoice': {
+        'correct_answers': list, 'false_answers': list, 'single': int
+    },
+    'numerical': {
+        'correct_answers': list, 'tolerance': float
+    },
+    'shortanswer': {
+        'correct_answers': list, 'usecase': int
+    },
+    'essay': {
+        'answer_files': list
+    },
+    'matching': {
+        'correct_answers': dict, 'false_answers': list
+    },
+    'gapselect': {
+        'correct_answers': dict, 'false_answers': dict
+    },
+    'ddimageortext': {
+        'correct_answers': list, 'drops': dict, 'img_files': list
+    },
+    'calculated': {
+        'correct_answers': list, 'tolerance': list, 'vars': list
+    }
+}

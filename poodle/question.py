@@ -26,22 +26,47 @@ def check_question(json_string: str) -> dict:
         for k in keys.keys():
             if k not in question.keys():
                 output[k] = 'Missing'
-    # Function for data type check of keys
+    # Check if values are empty strings
+    def check_empty(question: dict, keys: dict, output: dict) -> None:
+        for k in keys.keys():
+            if k not in output.keys() and k in question.keys():
+                if re.match(r'^$|\s+', question[k]):
+                    output[k] = 'Empty value'
+    # Check if values have correct data type
     def check_type(question: dict, keys: dict, output: dict) -> None:
         for k, v in keys.items():
             if k not in output.keys() and k in question.keys():
                 if type(question[k]) != v:
                     output[k] = f'Wrong data type. Expected: {v}'
+    # Check if value is in possible set of limited options
+    def check_in_options(input_obj, input_key: str, options: list, output: dict) -> None:
+        try:
+            if input_key not in output.keys():
+                if input_obj not in options:
+                    output[input_key] = f'{input_obj} not in  possible options: {options}'
+        except KeyError:
+            pass
+    # Check if list or dict has required length
+    def check_length(input_obj, input_key: str, required: int, mode: str, output: dict) -> None:
+        try:
+            if input_key not in output.keys():
+                if mode == 'fixed':
+                    if len(input_obj) != goal:
+                        output[input_key] = f'Wrong number of entries. (Required: {required})'
+                elif mode == 'min':
+                    if len(input_obj) < goal:
+                        output[input_key] = f'Wrong number of entries. (Required: {required} or more)'
+                else:
+                    raise Exception('Wrong mode argument')
+        except KeyError:
+            pass
 
     # Functions for each moodle_type and general fields
     def check_general(question: dict) -> None:
         # Keys that are always present
-        general_keys = {
-            'name': str, 'question': str, 'family_type': str, 'points': int,
-            'in_exams': dict, 'time_est': int, 'difficulty': int
-        }
-        check_missing(question, general_keys, result_dict)
-        check_type(question, general_keys, result_dict)
+        check_missing(question, KEY_TYPES['general'], result_dict)
+        check_empty(question, KEY_TYPES['general'], result_dict)
+        check_type(question, KEY_TYPES['general'], result_dict)
         # Check for correct naming scheme
         if Q_CATEGORIES and 'name' not in result_dict:
             if question['name'][:-4] not in Q_CATEGORIES:
@@ -49,25 +74,41 @@ def check_question(json_string: str) -> dict:
         # Check for duplicate question name
         if QUESTIONS.find_one({'name': question['name']}):
             result_dict['name'] = 'Name already exists in database.'
+        # Make sure family_type is one of three possibilities
+        check_in_options(
+            question['family_type'], 'family_type',
+            ['single', 'parent', 'child'], result_dict
+        )
+        # Make sure exam scores are floats
+        if 'in_exams' not in result_dict.keys():
+            check_type(
+                question['in_exams'], {k: float for k in question['in_exams']},
+                result_dict
+            )
 
         # Optional keys
-        optional_keys = {
-            'img_files': list, 'tables': dict
-        }
-        check_type(question, optional_keys, result_dict)
+        check_type(question, KEY_TYPES['optional'], result_dict)
 
     def check_multichoice(question: dict) -> dict:
-        check_general(question)
 
-        multichoice_keys = {
-            'correct_answers': list, 'false_answers': list
-        }
-        check_missing(question, multichoice_keys, result_dict)
-        check_type(question, multichoice_keys, result_dict)
-        # Check optional "single" key for value 0/1
-        if 'single' in question.keys():
-            if question['single'] not in range(0,2):
-                result_dict['single'] = 'Expected value: 0/1'
+        check_general(question)
+        check_missing(question, KEY_TYPES['multichoice'], result_dict)
+        check_empty(question, KEY_TYPES['multichoice'], result_dict)
+        check_type(question, KEY_TYPES['multichoice'], result_dict)
+        # Make sure single is 0 or 1
+        check_in_options(
+            question['single'], 'single',
+            [0, 1], result_dict
+        )
+        # Needs at least one correct and false answer
+        check_length(
+            question['correct_answers'], 'correct_answers',
+            1, 'min', result_dict
+        )
+        check_length(
+            question['false_answers'], 'false_answers',
+            1, 'min', result_dict
+        )
 
         if result_dict:
             result_dict['__question_name__'] = question['name']
@@ -75,19 +116,16 @@ def check_question(json_string: str) -> dict:
         return result_dict
 
     def check_numerical(question: dict) -> dict:
-        check_general(question)
 
-        numerical_keys = {
-            'correct_answers': list
-        }
-        check_missing(question, numerical_keys, result_dict)
-        check_type(question, numerical_keys, result_dict)
-        # "tolerance" key can be int or float
-        if 'tolerance' not in question.keys():
-            result_dict['tolerance'] = 'Missing'
-        else:
-            if type(question['tolerance']) != int and type(question['tolerance']) != float:
-                result_dict['tolerance'] = 'Wrong data type. Expected: int or float'
+        check_general(question)
+        check_missing(question, KEY_TYPES['numerical'], result_dict)
+        check_empty(question, KEY_TYPES['numerical'], result_dict)
+        check_type(question, KEY_TYPES['numerical'], result_dict)
+        # Needs at least one correct answer
+        check_length(
+            question['correct_answers'], 'correct_answers',
+            1, 'min', result_dict
+        )
 
         if result_dict:
             result_dict['__question_name__'] = question['name']
@@ -95,13 +133,21 @@ def check_question(json_string: str) -> dict:
         return result_dict
 
     def check_shortanswer(question: dict) -> dict:
-        check_general(question)
 
-        shortanswer_keys = {
-            'correct_answers': list, 'usecase': int
-        }
-        check_missing(question, shortanswer_keys, result_dict)
-        check_type(question, shortanswer_keys, result_dict)
+        check_general(question)
+        check_missing(question, KEY_TYPES['shortanswer'], result_dict)
+        check_empty(question, KEY_TYPES['shortanswer'], result_dict)
+        check_type(question, KEY_TYPES['shortanswer'], result_dict)
+        # Make sure usecase is 0 or 1
+        check_in_options(
+            question['usecase'], 'usecase',
+            [0, 1], result_dict
+        )
+        # Needs at least one correct answer
+        check_length(
+            question['correct_answers'], 'correct_answers',
+            1, 'min', result_dict
+        )
 
         if result_dict:
             result_dict['__question_name__'] = question['name']
@@ -109,13 +155,16 @@ def check_question(json_string: str) -> dict:
         return result_dict
 
     def check_essay(question: dict):
+        
         check_general(question)
-
-        essay_keys = {
-            'answer_files': list
-        }
-        check_missing(question, essay_keys, result_dict)
-        check_type(question, essay_keys, result_dict)
+        check_missing(question, KEY_TYPES['essay'], result_dict)
+        check_empty(question, KEY_TYPES['essay'], result_dict)
+        check_type(question, KEY_TYPES['essay'], result_dict)
+        # answer_files has fixed length of 2
+        check_length(
+            question['answer_files'], 'answer_files',
+            2, 'fixed', result_dict
+        )
 
         if result_dict:
             result_dict['__question_name__'] = question['name']
@@ -123,13 +172,16 @@ def check_question(json_string: str) -> dict:
         return result_dict
         
     def check_matching(question: dict):
-        check_general(question)
 
-        matching_keys = {
-            'correct_answers': dict, 'false_answers': list
-        }
-        check_missing(question, matching_keys, result_dict)
-        check_type(question, matching_keys, result_dict)
+        check_general(question)
+        check_missing(question, KEY_TYPES['matching'], result_dict)
+        check_empty(question, KEY_TYPES['matching'], result_dict)
+        check_type(question, KEY_TYPES['matching'], result_dict)
+        # Needs at least 2 correct answers to make sense
+        check_length(
+            question['correct_answers'], 'correct_answers',
+            2, 'min', result_dict
+        )
 
         if result_dict:
             result_dict['__question_name__'] = question['name']
@@ -137,13 +189,20 @@ def check_question(json_string: str) -> dict:
         return result_dict
         
     def check_gapselect(question: dict):
-        check_general(question)
 
-        gapselect_keys = {
-            'correct_answers': dict, 'false_answers': dict
-        }
-        check_missing(question, gapselect_keys, result_dict)
-        check_type(question, gapselect_keys, result_dict)
+        check_general(question)
+        check_missing(question, KEY_TYPES['gapselect'], result_dict)
+        check_empty(question, KEY_TYPES['gapselect'], result_dict)
+        check_type(question, KEY_TYPES['gapselect'], result_dict)
+        # Needs at least one correct and false answer
+        check_length(
+            question['correct_answers'], 'correct_answers',
+            1, 'min', result_dict
+        )
+        check_length(
+            question['false_answers'], 'false_answers',
+            1, 'min', result_dict
+        )
 
         if result_dict:
             result_dict['__question_name__'] = question['name']
@@ -151,13 +210,18 @@ def check_question(json_string: str) -> dict:
         return result_dict
         
     def check_ddimageortext(question: dict):
-        check_general(question)
 
-        ddimageortext_keys = {
-            'correct_answers': list, 'drops': dict
-        }
-        check_missing(question, ddimageortext_keys, result_dict)
-        check_type(question, ddimageortext_keys, result_dict)
+        check_general(question)
+        check_missing(question, KEY_TYPES['ddimageortext'], result_dict)
+        check_empty(question, KEY_TYPES['ddimageortext'], result_dict)
+        check_type(question, KEY_TYPES['ddimageortext'], result_dict)
+        # Drops always have X and Y value
+        if 'drops' in question.keys() and 'drops' not in result_dict.keys():
+            for k, v in question['drops'].items():
+                check_length(
+                    question['drops'][k], f'drops.{k}',
+                    2, 'fixed', result_dict
+                )
 
         if result_dict:
             result_dict['__question_name__'] = question['name']
@@ -165,13 +229,21 @@ def check_question(json_string: str) -> dict:
         return result_dict
         
     def check_calculated(question: dict):
-        check_general(question)
 
-        calculated_keys = {
-            'correct_answers': list, 'tolerance': list, 'vars': list
-        }
-        check_missing(question, calculated_keys, result_dict)
-        check_type(question, calculated_keys, result_dict)
+        check_general(question)
+        check_missing(question, KEY_TYPES['calculated'], result_dict)
+        check_empty(question, KEY_TYPES['calculated'], result_dict)
+        check_type(question, KEY_TYPES['calculated'], result_dict)
+        # Tolerance needs to be 3 long
+        check_length(
+            question['tolerance'], 'tolerance',
+            3, 'fixed', result_dict
+        )
+        # Make sure tolerance type is correct
+        check_in_options(
+            question['tolerance'][1], 'tolerance',
+            ['relative', 'nominal', 'geometric'], result_dict
+        )
 
         if result_dict:
             result_dict['__question_name__'] = question['name']
