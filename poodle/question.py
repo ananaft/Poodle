@@ -93,15 +93,10 @@ def check_question(json_string: str) -> dict:
                 question['single'], 'single',
                 [0, 1], result_dict
             )
-        # Needs at least one correct and false answer
+        # Needs at least one correct answer
         if 'correct_answers' not in result_dict.keys():
             check_length(
                 question['correct_answers'], 'correct_answers',
-                1, 'min', result_dict
-            )
-        if 'false_answers' not in result_dict.keys():
-            check_length(
-                question['false_answers'], 'false_answers',
                 1, 'min', result_dict
             )
 
@@ -217,6 +212,12 @@ def check_question(json_string: str) -> dict:
         check_missing(question, KEY_TYPES['ddimageortext'], result_dict)
         check_empty(question, KEY_TYPES['ddimageortext'], result_dict)
         check_type(question, KEY_TYPES['ddimageortext'], result_dict)
+        # Needs at least two correct answers
+        if 'correct_answers' not in result_dict.keys():
+            check_length(
+                question['correct_answers'], 'correct_answers',
+                2, 'min', result_dict
+            )
         # Needs at least two drops
         if 'drops' not in result_dict.keys():
             check_length(
@@ -235,6 +236,12 @@ def check_question(json_string: str) -> dict:
             check_length(
                 question['img_files'], 'img_files',
                 1, 'fixed', result_dict
+            )
+        # Correct answers needs to be equal to drops
+        if not any(k in result_dict.keys() for k in ('correct_answers', 'drops')):
+            check_length(
+                question['drops'], 'drops',
+                len(question['correct_answers']), 'fixed', result_dict
             )
 
         if result_dict:
