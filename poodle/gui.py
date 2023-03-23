@@ -285,11 +285,11 @@ class GeneralQuestionGrid(Gtk.Grid):
                 case Gtk.Entry.__name__:
                     return field_child.get_text()
                 case SimpleListGrid.__name__:
-                    return 1
+                    return field_child.get_content()
                 case SimpleDictGrid.__name__:
-                    return 2
+                    return field_child.get_content()
                 case DictListGrid.__name__:
-                    return 3
+                    return field_child.get_content()
                 case _:
                     raise Exception
         
@@ -297,7 +297,7 @@ class GeneralQuestionGrid(Gtk.Grid):
         child_pairs = list(zip(
             self.get_children()[1::2], self.get_children()[0::2]
         ))
-
+        # Update self.content dict
         for i in child_pairs:
             self.content[i[0].get_property('label')] = get_field_content(i[1])
 
@@ -559,8 +559,14 @@ class SimpleListGrid(Gtk.Grid):
 
         self.n_rows += 1
 
-    def get_content(self):
-        return 0
+    def get_content(self, output_type: tuple[type, list] = str) -> list:
+
+        content = [x.get_text() for x in self.get_children()[:0:-1]]
+
+        if type(output_type) == list: # calculated tolerance field needs different types
+            return [x[0](x[1]) for x in zip(output_type, content)]
+        else:
+            return [output_type(x) for x in content]
 
 
 class SimpleDictGrid(Gtk.Grid):
@@ -608,6 +614,16 @@ class SimpleDictGrid(Gtk.Grid):
         value_entry.show()
 
         self.n_rows += 1
+
+    def get_content(self, output_type: type = str) -> dict:
+
+        child_list = self.get_children()[1:]
+        content = dict(zip(
+            reversed([x.get_text() for x in child_list][len(child_list)//2:]),
+            reversed([x.get_text() for x in child_list][:len(child_list)//2])
+        ))
+
+        return {k: output_type(v) for k, v in content.items()}
 
 
 class DictListGrid(Gtk.Grid):
