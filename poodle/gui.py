@@ -74,7 +74,7 @@ class QuestionTable(Gtk.TreeView):
             'family_type': 'single',
             'in_exams': {'20190212': 3.5,
                          '20201108': 2},
-            'zzz': 21
+            'zzz': 42
         } ## TESTING
         
         if keyname == 'Return':
@@ -129,7 +129,7 @@ class QuestionWindow(Gtk.Window):
 
         self.scroll_window = Gtk.ScrolledWindow()
         self.scroll_window.set_vexpand(True)
-        self.notebook = QuestionView(question_content)
+        self.notebook = QuestionNotebook(question_content)
         self.scroll_window.add(self.notebook)
 
         self.control = ControlPanel()
@@ -139,7 +139,7 @@ class QuestionWindow(Gtk.Window):
                                  Gtk.PositionType.BOTTOM, 1, 1)
 
 
-class QuestionView(Gtk.Notebook):
+class QuestionNotebook(Gtk.Notebook):
 
     def __init__(self, question_content: dict):
 
@@ -166,19 +166,24 @@ class QuestionView(Gtk.Notebook):
                 raise Exception
         self.append_page(self.question_grid, Gtk.Label(label='Question'))
 
-        self.textview = Gtk.TextView(wrap_mode=Gtk.WrapMode(3))
-        self.textview.content = question_content
-        self.textbuffer = self.textview.get_buffer()
-        self.textbuffer.set_text(json.dumps(self.textview.content,
-                                            ensure_ascii=False, indent=4))
-        self.append_page(self.textview, Gtk.Label(label='Raw'))
+        self.raw_page = RawQuestionText(question_content)
+        self.append_page(self.raw_page, Gtk.Label(label='Raw'))
 
         self.connect('switch-page', self.on_switch_page)
+        self.switch_counter = 0
 
     # Passing data between pages on switch
     def on_switch_page(self, notebook, page, page_num):
-        time.sleep(.5)
-        print(page.content)
+
+        page_titles = ['Question', 'Raw']
+
+        if self.switch_counter > 0:
+
+            # Update content of previous page and pass to new page
+            new_content = self.get_nth_page(int(not page_num)).update_content()
+            page.overwrite(new_content)
+
+        self.switch_counter += 1
 
 
 class GeneralQuestionGrid(Gtk.Grid):
@@ -195,6 +200,7 @@ class GeneralQuestionGrid(Gtk.Grid):
         self.attach(self.name_label, 0, 0, 1, 1)
 
         self.name_field = Gtk.Entry()
+        self.name_field.set_property('name', 'name')
         self.name_field.set_hexpand(True)
         self.name_field.set_text(self.content['name'])
         self.name_field.set_editable(False)
@@ -208,6 +214,7 @@ class GeneralQuestionGrid(Gtk.Grid):
                             Gtk.PositionType.BOTTOM, 1, 1)
 
         self.question_field = Gtk.TextView(wrap_mode=Gtk.WrapMode(3))
+        self.question_field.set_property('name', 'question')
         self.question_field.set_hexpand(True)
         self.question_buffer = self.question_field.get_buffer()
         self.question_buffer.set_text(self.content['question'])
@@ -221,6 +228,7 @@ class GeneralQuestionGrid(Gtk.Grid):
                             Gtk.PositionType.BOTTOM, 1, 1)
 
         self. points_field = Gtk.Entry()
+        self.points_field.set_property('name', 'points')
         self.points_field.set_hexpand(True)
         self.points_field.set_text(str(self.content['points']))
         self.attach_next_to(self.points_field,
@@ -233,6 +241,7 @@ class GeneralQuestionGrid(Gtk.Grid):
                             Gtk.PositionType.BOTTOM, 1, 1)
 
         self. difficulty_field = Gtk.Entry()
+        self.difficulty_field.set_property('name', 'difficulty')
         self.difficulty_field.set_hexpand(True)
         self.difficulty_field.set_text(str(self.content['difficulty']))
         self.attach_next_to(self.difficulty_field,
@@ -245,6 +254,7 @@ class GeneralQuestionGrid(Gtk.Grid):
                             Gtk.PositionType.BOTTOM, 1, 1)
 
         self. time_est_field = Gtk.Entry()
+        self.time_est_field.set_property('name', 'time_est')
         self.time_est_field.set_hexpand(True)
         self.time_est_field.set_text(str(self.content['time_est']))
         self.attach_next_to(self.time_est_field,
@@ -257,6 +267,7 @@ class GeneralQuestionGrid(Gtk.Grid):
                             Gtk.PositionType.BOTTOM, 1, 1)
 
         self.family_type_field = Gtk.Entry()
+        self.family_type_field.set_property('name', 'family_type')
         self.family_type_field.set_hexpand(True)
         self.family_type_field.set_text(self.content['family_type'])
         self.family_type_field.set_editable(False)
@@ -270,8 +281,10 @@ class GeneralQuestionGrid(Gtk.Grid):
                             Gtk.PositionType.BOTTOM, 1, 1)
 
         self.in_exams_field = SimpleDictGrid(
-            self.content['in_exams'], editable=False, add=False
+            self.content['in_exams'], editable=False, add=False,
+            output_type=float
         )
+        self.in_exams_field.set_property('name', 'in_exams')
         self.attach_next_to(self.in_exams_field,
                             self.in_exams_label,
                             Gtk.PositionType.RIGHT, 2, 1)
@@ -281,9 +294,15 @@ class GeneralQuestionGrid(Gtk.Grid):
 
         def get_field_content(field_child):
 
-            match field_child.__class__.__name__: # SyntaxError without __name__
-                case Gtk.Entry.__name__:
-                    return field_child.get_text()
+            match field_child.__class__.__name__:
+                case Gtk.TextView.__name__:
+                    textbuffer = field_child.get_buffer()
+                    text = textbuffer.get_text(
+                        textbuffer.get_start_iter(),
+                        textbuffer.get_end_iter(),
+                        include_hidden_chars=True
+                    )
+                    return text
                 case SimpleListGrid.__name__:
                     return field_child.get_content()
                 case SimpleDictGrid.__name__:
@@ -299,7 +318,45 @@ class GeneralQuestionGrid(Gtk.Grid):
         ))
         # Update self.content dict
         for i in child_pairs:
-            self.content[i[0].get_property('label')] = get_field_content(i[1])
+            # Preserve original data types of entry fields
+            if type(i[1]) == Gtk.Entry:
+                original_type = type(self.content[i[0].get_property('label')])
+                self.content[i[0].get_property('label')] = original_type(i[1].get_text())
+            else:
+                self.content[i[0].get_property('label')] = get_field_content(i[1])
+
+        return self.content
+
+    def overwrite(self, question_content: dict):
+
+        self.content = question_content
+
+        for k, v in question_content.items():
+
+            # Get each child according to passed dictionary
+            try:
+                child = list(filter(
+                    lambda x: (x.get_property('name') == k), self.get_children()
+                ))[0]
+            except IndexError:
+                child = 'Ignore key'
+
+            # Overwrite child according to class
+            match child.__class__.__name__:
+                case Gtk.Entry.__name__:
+                    child.set_text(str(v))
+                case Gtk.TextView.__name__:
+                    child.get_buffer().set_text(str(v))
+                case SimpleListGrid.__name__:
+                    child.overwrite(v)
+                case SimpleDictGrid.__name__:
+                    child.overwrite(v)
+                case DictListGrid.__name__:
+                    child.overwrite(v)
+                case str.__name__:
+                    pass
+                case _:
+                    raise Exception
 
 
 class MultiChoiceQuestionGrid(GeneralQuestionGrid):
@@ -314,6 +371,7 @@ class MultiChoiceQuestionGrid(GeneralQuestionGrid):
         self.correct_answers_field = SimpleListGrid(
             self.content['correct_answers']
         )
+        self.correct_answers_field.set_property('name', 'correct_answers')
         self.attach_next_to(self.correct_answers_field,
                             self.correct_answers_label,
                             Gtk.PositionType.RIGHT, 2, 1)
@@ -324,6 +382,7 @@ class MultiChoiceQuestionGrid(GeneralQuestionGrid):
         self.false_answers_field = SimpleListGrid(
             self.content['false_answers']
         )
+        self.false_answers_field.set_property('name', 'false_answers')
         self.attach_next_to(self.false_answers_field,
                             self.false_answers_label,
                             Gtk.PositionType.RIGHT, 2, 1)
@@ -332,6 +391,7 @@ class MultiChoiceQuestionGrid(GeneralQuestionGrid):
         self.single_label = Gtk.Label(label='single')
         self.attach(self.single_label, 0, 4, 1, 1)
         self.single_field = Gtk.Entry()
+        self.single_field.set_property('name', 'single')
         self.single_field.set_hexpand(True)
         self.single_field.set_text(str(self.content['single']))
         self.attach_next_to(self.single_field,
@@ -349,8 +409,9 @@ class NumericalQuestionGrid(GeneralQuestionGrid):
         self.correct_answers_label = Gtk.Label(label='correct_answers')
         self.attach(self.correct_answers_label, 0, 2, 1, 1)
         self.correct_answers_field = SimpleListGrid(
-            self.content['correct_answers'], add=False
+            self.content['correct_answers'], add=False, output_type=float
         )
+        self.correct_answers_field.set_property('name', 'correct_answers')
         self.attach_next_to(self.correct_answers_field,
                             self.correct_answers_label,
                             Gtk.PositionType.RIGHT, 2, 1)
@@ -359,6 +420,7 @@ class NumericalQuestionGrid(GeneralQuestionGrid):
         self.tolerance_label = Gtk.Label(label='tolerance')
         self.attach(self.tolerance_label, 0, 3, 1, 1)
         self.tolerance_field = Gtk.Entry()
+        self.tolerance_field.set_property('name', 'tolerance')
         self.tolerance_field.set_hexpand(True)
         self.tolerance_field.set_text(str(self.content['tolerance']))
         self.attach_next_to(self.tolerance_field,
@@ -378,6 +440,7 @@ class ShortanswerQuestionGrid(GeneralQuestionGrid):
         self.correct_answers_field = SimpleListGrid(
             self.content['correct_answers']
         )
+        self.correct_answers_field.set_property('name', 'correct_answers')
         self.attach_next_to(self.correct_answers_field,
                             self.correct_answers_label,
                             Gtk.PositionType.RIGHT, 2, 1)
@@ -386,6 +449,7 @@ class ShortanswerQuestionGrid(GeneralQuestionGrid):
         self.usecase_label = Gtk.Label(label='usecase')
         self.attach(self.usecase_label, 0, 3, 1, 1)
         self.usecase_field = Gtk.Entry()
+        self.usecase_field.set_property('name', 'usecase')
         self.usecase_field.set_hexpand(True)
         self.usecase_field.set_text(str(self.content['usecase']))
         self.attach_next_to(self.usecase_field,
@@ -403,8 +467,9 @@ class EssayQuestionGrid(GeneralQuestionGrid):
         self.answer_files_label = Gtk.Label(label='answer_files')
         self.attach(self.answer_files_label, 0, 2, 1, 1)
         self.answer_files_field = SimpleListGrid(
-            self.content['answer_files'], add=False
+            self.content['answer_files'], add=False, output_type=int
         )
+        self.answer_files_field.set_property('name', 'answer_files')
         self.attach_next_to(self.answer_files_field,
                             self.answer_files_label,
                             Gtk.PositionType.RIGHT, 2, 1)
@@ -422,6 +487,7 @@ class MatchingQuestionGrid(GeneralQuestionGrid):
         self.correct_answers_field = SimpleDictGrid(
             self.content['correct_answers']
         )
+        self.correct_answers_field.set_property('name', 'correct_answers')
         self.attach_next_to(self.correct_answers_field,
                             self.correct_answers_label,
                             Gtk.PositionType.RIGHT, 2, 1)
@@ -432,6 +498,7 @@ class MatchingQuestionGrid(GeneralQuestionGrid):
         self.false_answers_field = SimpleListGrid(
             self.content['false_answers']
         )
+        self.false_answers_field.set_property('name', 'false_answers')
         self.attach_next_to(self.false_answers_field,
                             self.false_answers_label,
                             Gtk.PositionType.RIGHT, 2, 1)
@@ -449,6 +516,7 @@ class GapselectQuestionGrid(GeneralQuestionGrid):
         self.correct_answers_field = DictListGrid(
             self.content['correct_answers']
         )
+        self.correct_answers_field.set_property('name', 'correct_answers')
         self.attach_next_to(self.correct_answers_field,
                             self.correct_answers_label,
                             Gtk.PositionType.RIGHT, 2, 1)
@@ -459,6 +527,7 @@ class GapselectQuestionGrid(GeneralQuestionGrid):
         self.false_answers_field = DictListGrid(
             self.content['false_answers']
         )
+        self.false_answers_field.set_property('name', 'false_answers')
         self.attach_next_to(self.false_answers_field,
                             self.false_answers_label,
                             Gtk.PositionType.RIGHT, 2, 1)
@@ -476,6 +545,7 @@ class DDImageOrTextQuestionGrid(GeneralQuestionGrid):
         self.correct_answers_field = SimpleListGrid(
             self.content['correct_answers']
         )
+        self.correct_answers_field.set_property('name', 'correct_answers')
         self.attach_next_to(self.correct_answers_field,
                             self.correct_answers_label,
                             Gtk.PositionType.RIGHT, 2, 1)
@@ -484,8 +554,10 @@ class DDImageOrTextQuestionGrid(GeneralQuestionGrid):
         self.drops_label = Gtk.Label(label='drops')
         self.attach(self.drops_label, 0, 3, 1, 1)
         self.drops_field = DictListGrid(
-            self.content['drops'], list_add=False, new_list_length=2
+            self.content['drops'], list_add=False, new_list_length=2,
+            output_type=int
         )
+        self.drops_field.set_property('name', 'drops')
         self.attach_next_to(self.drops_field,
                             self.drops_label,
                             Gtk.PositionType.RIGHT, 2, 1)
@@ -503,6 +575,7 @@ class CalculatedQuestionGrid(GeneralQuestionGrid):
         self.correct_answers_field = SimpleListGrid(
             self.content['correct_answers'], add=False
         )
+        self.correct_answers_field.set_property('name', 'correct_answers')
         self.attach_next_to(self.correct_answers_field,
                             self.correct_answers_label,
                             Gtk.PositionType.RIGHT, 2, 1)
@@ -513,6 +586,7 @@ class CalculatedQuestionGrid(GeneralQuestionGrid):
         self.vars_field = SimpleListGrid(
             self.content['vars']
         )
+        self.vars_field.set_property('name', 'vars')
         self.attach_next_to(self.vars_field,
                             self.vars_label,
                             Gtk.PositionType.RIGHT, 2, 1)
@@ -521,8 +595,9 @@ class CalculatedQuestionGrid(GeneralQuestionGrid):
         self.tolerance_label = Gtk.Label(label='tolerance')
         self.attach(self.tolerance_label, 0, 4, 1, 1)
         self.tolerance_field = SimpleListGrid(
-            self.content['tolerance'], add=False
+            self.content['tolerance'], add=False, output_type=[float, str, int]
         )
+        self.tolerance_field.set_property('name', 'tolerance')
         self.attach_next_to(self.tolerance_field,
                             self.tolerance_label,
                             Gtk.PositionType.RIGHT, 2, 1)
@@ -530,7 +605,10 @@ class CalculatedQuestionGrid(GeneralQuestionGrid):
 
 class SimpleListGrid(Gtk.Grid):
 
-    def __init__(self, list_field: list, editable: bool = True, add: bool = True):
+    def __init__(self, list_field: list,
+                 editable: bool = True,
+                 add: bool = True,
+                 output_type: tuple[type, list] = str):
 
         super().__init__()
         self.set_row_spacing(10)
@@ -542,6 +620,7 @@ class SimpleListGrid(Gtk.Grid):
             entry.set_editable(editable)
             self.attach(entry, 0, n, 1, 1)
 
+        self.output_type = output_type
         self.n_rows = len(list_field)
 
         if add:
@@ -559,19 +638,29 @@ class SimpleListGrid(Gtk.Grid):
 
         self.n_rows += 1
 
-    def get_content(self, output_type: tuple[type, list] = str) -> list:
+    def get_content(self) -> list:
 
         content = [x.get_text() for x in self.get_children()[:0:-1]]
 
-        if type(output_type) == list: # calculated tolerance field needs different types
-            return [x[0](x[1]) for x in zip(output_type, content)]
+        if type(self.output_type) == list: # calculated tolerance field needs different types
+            return [x[0](x[1]) for x in zip(self.output_type, content)]
         else:
-            return [output_type(x) for x in content]
+            return [self.output_type(x) for x in content]
+
+    def overwrite(self, input_list: list):
+
+        values_entries = zip(input_list, reversed(self.get_children()))
+        
+        for i, j in values_entries:
+            j.set_text(str(i))
 
 
 class SimpleDictGrid(Gtk.Grid):
 
-    def __init__(self, dict_field: dict, editable: bool = True, add: bool = True):
+    def __init__(self, dict_field: dict,
+                 editable: bool = True,
+                 add: bool = True,
+                 output_type: type = str):
 
         super().__init__()
         self.set_column_spacing(50)
@@ -591,6 +680,7 @@ class SimpleDictGrid(Gtk.Grid):
             entry.set_editable(editable)
             self.attach(entry, 1, n, 1, 1)
 
+        self.output_type = output_type
         self.n_rows = len(dict_field.keys())
 
         if add:
@@ -615,7 +705,7 @@ class SimpleDictGrid(Gtk.Grid):
 
         self.n_rows += 1
 
-    def get_content(self, output_type: type = str) -> dict:
+    def get_content(self) -> dict:
 
         child_list = self.get_children()[1:]
         content = dict(zip(
@@ -623,7 +713,25 @@ class SimpleDictGrid(Gtk.Grid):
             reversed([x.get_text() for x in child_list][:len(child_list)//2])
         ))
 
-        return {k: output_type(v) for k, v in content.items()}
+        return {k: self.output_type(v) for k, v in content.items()}
+
+    def overwrite(self, input_dict: dict):
+
+        child_list = self.get_children()[1:]
+        key_pairs = zip(
+            input_dict.keys(),
+            reversed(child_list[len(child_list)//2:])
+        )
+        value_pairs = zip(
+            input_dict.values(),
+            reversed(child_list[:len(child_list)//2])
+        )
+
+        for i, j in key_pairs:
+            j.set_text(str(i))
+
+        for i, j in value_pairs:
+            j.set_text(str(i))
 
 
 class DictListGrid(Gtk.Grid):
@@ -631,7 +739,7 @@ class DictListGrid(Gtk.Grid):
     def __init__(self, dict_field: dict,
                  dict_editable: bool = True, dict_add: bool = True,
                  list_editable: bool = True, list_add: bool = True,
-                 new_list_length: int = 1):
+                 new_list_length: int = 1, output_type: tuple[type, list] = str):
 
         super().__init__()
         self.set_column_spacing(50)
@@ -647,6 +755,7 @@ class DictListGrid(Gtk.Grid):
                                 entry,
                                 Gtk.PositionType.RIGHT, 1, 1)
         
+        self.output_type = output_type
         self.n_rows = len(dict_field.keys())
         self.new_list_length = new_list_length
         self.list_editable = list_editable
@@ -673,6 +782,71 @@ class DictListGrid(Gtk.Grid):
         list_entry.show_all()
 
         self.n_rows += 1
+
+    def get_content(self) -> dict:
+
+        child_list = self.get_children()[1:]
+        content = dict(zip(
+            reversed([x.get_text() for x in child_list][len(child_list)//2:]),
+            reversed([x.get_content(self.output_type) if isinstance(x, SimpleListGrid)
+                      else x.get_text() for x in child_list][:len(child_list)//2])
+        ))
+
+        return content
+
+    def overwrite(self, input_dict: dict):
+
+        child_list = self.get_children()[1:]
+        key_pairs = zip(
+            input_dict.keys(),
+            reversed(child_list[len(child_list)//2:])
+        )
+        value_pairs = zip(
+            input_dict.values(),
+            reversed(child_list[:len(child_list)//2])
+        )
+
+        for i, j in key_pairs:
+            j.set_text(str(i))
+
+        for i, j in value_pairs:
+            if type(j) == Gtk.Entry:
+                j.set_text(str(i))
+            elif type(j) == SimpleListGrid:
+                j.overwrite(i)
+
+
+class RawQuestionText(Gtk.TextView):
+
+    def __init__(self, question_content: dict):
+
+        super().__init__(wrap_mode=Gtk.WrapMode(3))
+
+        self.content = question_content
+
+        self.textbuffer = self.get_buffer()
+        self.textbuffer.set_text(json.dumps(self.content,
+                                 ensure_ascii=False, indent=4))
+
+    def update_content(self):
+
+        self.content = json.loads(
+            self.textbuffer.get_text(
+            self.textbuffer.get_start_iter(),
+            self.textbuffer.get_end_iter(),
+            include_hidden_chars=True
+            )
+        )
+
+        return self.content
+
+    def overwrite(self, question_content: dict):
+
+        self.content = question_content
+
+        self.textbuffer.set_text(
+            json.dumps(question_content, ensure_ascii=False, indent=4)
+        )
 
 
 def gtk_overview() -> None:
