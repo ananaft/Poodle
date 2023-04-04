@@ -1,4 +1,4 @@
-# from config import *
+from config import *
 
 import pandas as pd
 import numpy as np
@@ -59,23 +59,23 @@ class QuestionTable(Gtk.TreeView):
         selected_row = treeview.get_selection()
         model, treeiter = selected_row.get_selected()
         question_name = model[treeiter][0]
-        # question_content = QUESTIONS.find_one({'name': question_name})
-        # question_content.pop('_id')
-        question_content = {
-            'name': 'mytest0199',
-            'moodle_type': 'multichoice',
-            'question': 'Setzen Sie die Einkommensvariable in Fällen, in denen sie 0 ist, auf Missing. Sortieren Sie den Datensatz aufsteigend nach Einkommen. Ermitteln Sie das <i>Haushaltseinkommen</i> der Person mit dem fünftniedrigsten Einkommen.',
-            'correct_answers': ["a", "b", "c", "d"],
-            'false_answers': [],
-            'single': 1,
-            'points': 4,
-            'difficulty': 1,
-            'time_est': 1,
-            'family_type': 'single',
-            'in_exams': {'20190212': 3.5,
-                         '20201108': 2},
-            'zzz': 42
-        } ## TESTING
+        question_content = QUESTIONS.find_one({'name': question_name})
+        question_content.pop('_id')
+        # question_content = {
+        #     'name': 'mytest0199',
+        #     'moodle_type': 'multichoice',
+        #     'question': 'Setzen Sie die Einkommensvariable in Fällen, in denen sie 0 ist, auf Missing. Sortieren Sie den Datensatz aufsteigend nach Einkommen. Ermitteln Sie das <i>Haushaltseinkommen</i> der Person mit dem fünftniedrigsten Einkommen.',
+        #     'correct_answers': ["a", "b", "c", "d"],
+        #     'false_answers': [],
+        #     'single': 1,
+        #     'points': 4,
+        #     'difficulty': 1,
+        #     'time_est': 1,
+        #     'family_type': 'single',
+        #     'in_exams': {'20190212': 3.5,
+        #                  '20201108': 2},
+        #     'zzz': 42
+        # } ## TESTING
         
         if keyname == 'Return':
             new_window = QuestionWindow(question_content)
@@ -208,9 +208,23 @@ class GeneralQuestionGrid(Gtk.Grid):
                             self.name_label,
                             Gtk.PositionType.RIGHT, 2, 1)
 
+        self.moodle_type_label = Gtk.Label(label='moodle_type')
+        self.attach_next_to(self.moodle_type_label,
+                            self.name_label,
+                            Gtk.PositionType.BOTTOM, 1, 1)
+
+        self.moodle_type_field = Gtk.Entry()
+        self.moodle_type_field.set_property('name', 'moodle_type')
+        self.moodle_type_field.set_hexpand(True)
+        self.moodle_type_field.set_text(self.content['moodle_type'])
+        self.moodle_type_field.set_editable(False)
+        self.attach_next_to(self.moodle_type_field,
+                            self.moodle_type_label,
+                            Gtk.PositionType.RIGHT, 2, 1)
+
         self.question_label = Gtk.Label(label='question')
         self.attach_next_to(self.question_label,
-                            self.name_label,
+                            self.moodle_type_label,
                             Gtk.PositionType.BOTTOM, 1, 1)
 
         self.question_field = Gtk.TextView(wrap_mode=Gtk.WrapMode(3))
@@ -365,9 +379,9 @@ class MultiChoiceQuestionGrid(GeneralQuestionGrid):
 
         super().__init__(question_content)
 
-        self.insert_row(2)
+        self.insert_row(3)
         self.correct_answers_label = Gtk.Label(label='correct_answers')
-        self.attach(self.correct_answers_label, 0, 2, 1, 1)
+        self.attach(self.correct_answers_label, 0, 3, 1, 1)
         self.correct_answers_field = SimpleListGrid(
             self.content['correct_answers']
         )
@@ -376,9 +390,9 @@ class MultiChoiceQuestionGrid(GeneralQuestionGrid):
                             self.correct_answers_label,
                             Gtk.PositionType.RIGHT, 2, 1)
 
-        self.insert_row(3)
+        self.insert_row(4)
         self.false_answers_label = Gtk.Label(label='false_answers')
-        self.attach(self.false_answers_label, 0, 3, 1, 1)
+        self.attach(self.false_answers_label, 0, 4, 1, 1)
         self.false_answers_field = SimpleListGrid(
             self.content['false_answers']
         )
@@ -387,9 +401,9 @@ class MultiChoiceQuestionGrid(GeneralQuestionGrid):
                             self.false_answers_label,
                             Gtk.PositionType.RIGHT, 2, 1)
 
-        self.insert_row(4)
+        self.insert_row(5)
         self.single_label = Gtk.Label(label='single')
-        self.attach(self.single_label, 0, 4, 1, 1)
+        self.attach(self.single_label, 0, 5, 1, 1)
         self.single_field = Gtk.Entry()
         self.single_field.set_property('name', 'single')
         self.single_field.set_hexpand(True)
@@ -405,9 +419,9 @@ class NumericalQuestionGrid(GeneralQuestionGrid):
 
         super().__init__(question_content)
 
-        self.insert_row(2)
+        self.insert_row(3)
         self.correct_answers_label = Gtk.Label(label='correct_answers')
-        self.attach(self.correct_answers_label, 0, 2, 1, 1)
+        self.attach(self.correct_answers_label, 0, 3, 1, 1)
         self.correct_answers_field = SimpleListGrid(
             self.content['correct_answers'], add=False, output_type=float
         )
@@ -416,9 +430,9 @@ class NumericalQuestionGrid(GeneralQuestionGrid):
                             self.correct_answers_label,
                             Gtk.PositionType.RIGHT, 2, 1)
 
-        self.insert_row(3)
+        self.insert_row(4)
         self.tolerance_label = Gtk.Label(label='tolerance')
-        self.attach(self.tolerance_label, 0, 3, 1, 1)
+        self.attach(self.tolerance_label, 0, 4, 1, 1)
         self.tolerance_field = Gtk.Entry()
         self.tolerance_field.set_property('name', 'tolerance')
         self.tolerance_field.set_hexpand(True)
@@ -434,9 +448,9 @@ class ShortanswerQuestionGrid(GeneralQuestionGrid):
 
         super().__init__(question_content)
 
-        self.insert_row(2)
+        self.insert_row(3)
         self.correct_answers_label = Gtk.Label(label='correct_answers')
-        self.attach(self.correct_answers_label, 0, 2, 1, 1)
+        self.attach(self.correct_answers_label, 0, 3, 1, 1)
         self.correct_answers_field = SimpleListGrid(
             self.content['correct_answers']
         )
@@ -445,9 +459,9 @@ class ShortanswerQuestionGrid(GeneralQuestionGrid):
                             self.correct_answers_label,
                             Gtk.PositionType.RIGHT, 2, 1)
 
-        self.insert_row(3)
+        self.insert_row(4)
         self.usecase_label = Gtk.Label(label='usecase')
-        self.attach(self.usecase_label, 0, 3, 1, 1)
+        self.attach(self.usecase_label, 0, 4, 1, 1)
         self.usecase_field = Gtk.Entry()
         self.usecase_field.set_property('name', 'usecase')
         self.usecase_field.set_hexpand(True)
@@ -463,9 +477,9 @@ class EssayQuestionGrid(GeneralQuestionGrid):
 
         super().__init__(question_content)
 
-        self.insert_row(2)
+        self.insert_row(3)
         self.answer_files_label = Gtk.Label(label='answer_files')
-        self.attach(self.answer_files_label, 0, 2, 1, 1)
+        self.attach(self.answer_files_label, 0, 3, 1, 1)
         self.answer_files_field = SimpleListGrid(
             self.content['answer_files'], add=False, output_type=int
         )
@@ -481,9 +495,9 @@ class MatchingQuestionGrid(GeneralQuestionGrid):
 
         super().__init__(question_content)
 
-        self.insert_row(2)
+        self.insert_row(3)
         self.correct_answers_label = Gtk.Label(label='correct_answers')
-        self.attach(self.correct_answers_label, 0, 2, 1, 1)
+        self.attach(self.correct_answers_label, 0, 3, 1, 1)
         self.correct_answers_field = SimpleDictGrid(
             self.content['correct_answers']
         )
@@ -492,9 +506,9 @@ class MatchingQuestionGrid(GeneralQuestionGrid):
                             self.correct_answers_label,
                             Gtk.PositionType.RIGHT, 2, 1)
 
-        self.insert_row(3)
+        self.insert_row(4)
         self.false_answers_label = Gtk.Label(label='false_answers')
-        self.attach(self.false_answers_label, 0, 3, 1, 1)
+        self.attach(self.false_answers_label, 0, 4, 1, 1)
         self.false_answers_field = SimpleListGrid(
             self.content['false_answers']
         )
@@ -510,9 +524,9 @@ class GapselectQuestionGrid(GeneralQuestionGrid):
 
         super().__init__(question_content)
 
-        self.insert_row(2)
+        self.insert_row(3)
         self.correct_answers_label = Gtk.Label(label='correct_answers')
-        self.attach(self.correct_answers_label, 0, 2, 1, 1)
+        self.attach(self.correct_answers_label, 0, 3, 1, 1)
         self.correct_answers_field = DictListGrid(
             self.content['correct_answers']
         )
@@ -521,9 +535,9 @@ class GapselectQuestionGrid(GeneralQuestionGrid):
                             self.correct_answers_label,
                             Gtk.PositionType.RIGHT, 2, 1)
 
-        self.insert_row(3)
+        self.insert_row(4)
         self.false_answers_label = Gtk.Label(label='false_answers')
-        self.attach(self.false_answers_label, 0, 3, 1, 1)
+        self.attach(self.false_answers_label, 0, 4, 1, 1)
         self.false_answers_field = DictListGrid(
             self.content['false_answers']
         )
@@ -539,9 +553,9 @@ class DDImageOrTextQuestionGrid(GeneralQuestionGrid):
 
         super().__init__(question_content)
 
-        self.insert_row(2)
+        self.insert_row(3)
         self.correct_answers_label = Gtk.Label(label='correct_answers')
-        self.attach(self.correct_answers_label, 0, 2, 1, 1)
+        self.attach(self.correct_answers_label, 0, 3, 1, 1)
         self.correct_answers_field = SimpleListGrid(
             self.content['correct_answers']
         )
@@ -550,9 +564,9 @@ class DDImageOrTextQuestionGrid(GeneralQuestionGrid):
                             self.correct_answers_label,
                             Gtk.PositionType.RIGHT, 2, 1)
 
-        self.insert_row(3)
+        self.insert_row(4)
         self.drops_label = Gtk.Label(label='drops')
-        self.attach(self.drops_label, 0, 3, 1, 1)
+        self.attach(self.drops_label, 0, 4, 1, 1)
         self.drops_field = DictListGrid(
             self.content['drops'], list_add=False, new_list_length=2,
             output_type=int
@@ -569,9 +583,9 @@ class CalculatedQuestionGrid(GeneralQuestionGrid):
 
         super().__init__(question_content)
 
-        self.insert_row(2)
+        self.insert_row(3)
         self.correct_answers_label = Gtk.Label(label='correct_answers')
-        self.attach(self.correct_answers_label, 0, 2, 1, 1)
+        self.attach(self.correct_answers_label, 0, 3, 1, 1)
         self.correct_answers_field = SimpleListGrid(
             self.content['correct_answers'], add=False
         )
@@ -580,9 +594,9 @@ class CalculatedQuestionGrid(GeneralQuestionGrid):
                             self.correct_answers_label,
                             Gtk.PositionType.RIGHT, 2, 1)
 
-        self.insert_row(3)
+        self.insert_row(4)
         self.vars_label = Gtk.Label(label='vars')
-        self.attach(self.vars_label, 0, 3, 1, 1)
+        self.attach(self.vars_label, 0, 4, 1, 1)
         self.vars_field = SimpleListGrid(
             self.content['vars']
         )
@@ -591,9 +605,9 @@ class CalculatedQuestionGrid(GeneralQuestionGrid):
                             self.vars_label,
                             Gtk.PositionType.RIGHT, 2, 1)
 
-        self.insert_row(4)
+        self.insert_row(5)
         self.tolerance_label = Gtk.Label(label='tolerance')
-        self.attach(self.tolerance_label, 0, 4, 1, 1)
+        self.attach(self.tolerance_label, 0, 5, 1, 1)
         self.tolerance_field = SimpleListGrid(
             self.content['tolerance'], add=False, output_type=[float, str, int]
         )
@@ -640,7 +654,10 @@ class SimpleListGrid(Gtk.Grid):
 
     def get_content(self) -> list:
 
-        content = [x.get_text() for x in self.get_children()[:0:-1]]
+        if hasattr(self, 'add_button'):
+            content = [x.get_text() for x in self.get_children()[:0:-1]]
+        else:
+            content = [x.get_text() for x in self.get_children()[::-1]]
 
         if type(self.output_type) == list: # calculated tolerance field needs different types
             return [x[0](x[1]) for x in zip(self.output_type, content)]
@@ -707,7 +724,10 @@ class SimpleDictGrid(Gtk.Grid):
 
     def get_content(self) -> dict:
 
-        child_list = self.get_children()[1:]
+        if hasattr(self, 'add_button'):
+            child_list = self.get_children()[1:]
+        else:
+            child_list = self.get_children()
         content = dict(zip(
             reversed([x.get_text() for x in child_list][len(child_list)//2:]),
             reversed([x.get_text() for x in child_list][:len(child_list)//2])
@@ -785,7 +805,10 @@ class DictListGrid(Gtk.Grid):
 
     def get_content(self) -> dict:
 
-        child_list = self.get_children()[1:]
+        if hasattr(self, 'add_button'):
+            child_list = self.get_children()[1:]
+        else:
+            child_list = self.get_children()
         content = dict(zip(
             reversed([x.get_text() for x in child_list][len(child_list)//2:]),
             reversed([x.get_content(self.output_type) if isinstance(x, SimpleListGrid)
@@ -851,23 +874,23 @@ class RawQuestionText(Gtk.TextView):
 
 def gtk_overview() -> None:
 
-    # # Generate dataframe
-    # exam_list = sorted([e['name'] for e in EXAMS.find()])
-    # df = pd.DataFrame(sorted(
-    #     [
-    #         [q['name'], q['difficulty'], q['time_est']] +
-    #         [round(q['in_exams'][e] / q['points'], 2)
-    #          if e in q['in_exams'] else '.' for e in exam_list
-    #         ]
-    #         for q in QUESTIONS.find() if q['name'][-2:] != '00'
-    #     ]),
-    #     columns = ['question', 'difficulty', 'time'] + exam_list
-    # )
-    # # Make exam appearance counter
-    # transform = lambda x: int(type(x) == float)
-    # appearances = df[exam_list].applymap(transform).sum(axis=1)
-    # df.insert(1, 'appearances', appearances)
-    df = pd.read_csv('/home/lukas/Nextcloud/poodle/databases/testing/questions.csv') ## TESTING
+    # Generate dataframe
+    exam_list = sorted([e['name'] for e in EXAMS.find()])
+    df = pd.DataFrame(sorted(
+        [
+            [q['name'], q['difficulty'], q['time_est']] +
+            [round(q['in_exams'][e] / q['points'], 2)
+             if e in q['in_exams'] else '.' for e in exam_list
+            ]
+            for q in QUESTIONS.find() if q['name'][-2:] != '00'
+        ]),
+        columns = ['question', 'difficulty', 'time'] + exam_list
+    )
+    # Make exam appearance counter
+    transform = lambda x: int(type(x) == float)
+    appearances = df[exam_list].applymap(transform).sum(axis=1)
+    df.insert(1, 'appearances', appearances)
+    # df = pd.read_csv('/home/lukas/Nextcloud/poodle/databases/testing/questions.csv') ## TESTING
 
     # Convert numpy data types to native Python types for Gtk.ListStore
     def numpy_to_native(numpy_type: type) -> type:
