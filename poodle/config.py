@@ -78,8 +78,8 @@ Q_CATEGORIES, SHUFFLE, RANDOM_ARR_SIZE = apply_config()
 # Expected value types for question keys
 KEY_TYPES = {
     'general': {
-        'name': str, 'question': str, 'family_type': str, 'points': int,
-        'in_exams': dict, 'time_est': int, 'difficulty': int
+        'name': str, 'question': str, 'family_type': str, 'moodle_type': str,
+        'points': int, 'in_exams': dict, 'time_est': int, 'difficulty': int
     },
     'optional': {
         'img_files': list, 'tables': dict
