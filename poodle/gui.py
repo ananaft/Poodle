@@ -68,7 +68,7 @@ class Overview(Gtk.Window):
 
         data = row_to_list(df)
         column_types = [numpy_to_native(x.type) for x in list(df.dtypes)]
-        column_names = ['question', 'appearances', 'difficulty', 'time_est'] +list(df.columns)[4:]
+        column_names = ['question', 'appearances', 'difficulty', 'time_est'] + list(df.columns)[4:]
 
         return data, column_types, column_names
 
@@ -233,19 +233,83 @@ class QuestionControlPanel(Gtk.ActionBar):
 
         super().__init__()
         self.parent_window = parent
+        self.page = self.parent_window.notebook.get_nth_page(
+            self.parent_window.notebook.get_current_page()
+        )
 
         self.save_button = Gtk.Button(label='Save')
         self.pack_start(self.save_button)
-        self.save_button.connect('clicked', self.save_question)
+        self.save_button.connect('clicked', self.on_save_clicked)
 
         self.delete_button = Gtk.Button(label='Delete')
         self.pack_end(self.delete_button)
-        self.delete_button.connect('clicked', self.delete_question)
+        self.delete_button.connect('clicked', self.on_delete_clicked)
 
-    def save_question(self, button):
-        return 0
+    def on_save_clicked(self, button) -> None:
 
-    def delete_question(self, button):
+        self.page.content = self.page.update_content()
+        # Check if question already exists in database
+        question_name = self.page.content['name']
+        if not QUESTIONS.find_one({'name': question_name}):
+            save_question()
+        else:
+            overwrite_question()
+
+        def save_question() -> None:
+            dialog = Gtk.MessageDialog(
+                transient_for=self.parent_window,
+                message_type=Gtk.MessageType.INFO,
+                buttons=Gtk.ButtonsType.YES_NO,
+                text=f'Are you sure you want to save {self.page.content["name"]}?'
+            )
+            dialog.format_secondary_text('')
+            response = dialog.run()
+            if response == Gtk.ResponseType.YES:
+                # Update database
+                QUESTIONS.insert_one(self.page.content)
+                # Update QuestionTable
+                ## CONTINUE HERE
+            elif response == Gtk.ResponseType.NO:
+                pass
+            dialog.destroy()
+
+        def overwrite_question() -> None:
+            dialog = Gtk.MessageDialog(
+                transient_for=self.parent_window,
+                message_type=Gtk.MessageType.INFO,
+                buttons=Gtk.ButtonsType.YES_NO,
+                text=f'Are you sure you want to overwrite {self.page.content["name"]}?'
+            )
+            dialog.format_secondary_text('Changes are irreversible!')
+            response = dialog.run()
+            if response == Gtk.ResponseType.YES:
+                # Update database
+                for k, v in self.page.content.items():
+                    QUESTIONS.find_one_and_update(
+                        {'name': self.page.content['name']},
+                        {'$set': {k: v}}
+                    )
+                # Update QuestionTable
+                ## CONTINUE HERE
+            elif response == Gtk.ResponseType.NO:
+                pass
+            dialog.destroy()
+            self.parent_window.destroy()
+
+    def on_delete_clicked(self, button) -> None:
+        dialog = Gtk.MessageDialog(
+            transient_for=self.parent_window,
+            message_type=Gtk.MessageType.INFO,
+            buttons=Gtk.ButtonsType.YES_NO,
+            text=f'Are you sure you want to delete {self.page.content["name"]}?'
+        )
+        dialog.format_secondary_text('Changes are irreversible!')
+        response = dialog.run()
+        if response == Gtk.ResponseType.YES:
+            print('y')
+        elif response == Gtk.ResponseType.NO:
+            print('n')
+        dialog.destroy()
         self.parent_window.destroy()
 
 
@@ -367,7 +431,7 @@ class GeneralQuestionGrid(Gtk.Grid):
                             Gtk.PositionType.RIGHT, 2, 1)
 
     # self.content needs to be updated when page is switched
-    def update_content(self):
+    def update_content(self) -> dict:
 
         def get_field_content(field_child):
 
@@ -919,7 +983,7 @@ class RawQuestionText(Gtk.TextView):
         self.textbuffer.set_text(json.dumps(self.content,
                                  ensure_ascii=False, indent=4))
 
-    def update_content(self):
+    def update_content(self) -> dict:
 
         self.content = json.loads(
             self.textbuffer.get_text(
