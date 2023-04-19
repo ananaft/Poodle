@@ -24,7 +24,7 @@ class Overview(Gtk.Window):
 
         self.scroll_window = Gtk.ScrolledWindow()
         self.scroll_window.set_vexpand(True)
-        self.table = QuestionTable(self, *self.load_data())
+        self.table = QuestionTable(self)
         self.scroll_window.add(self.table)
 
         self.control = OverviewControlPanel(self)
@@ -75,10 +75,16 @@ class Overview(Gtk.Window):
 
 class QuestionTable(Gtk.TreeView):
 
-    def __init__(self, parent, data, list_store_cols, treeview_cols):
+    def __init__(self, parent):
 
         super().__init__()
         self.parent_window = parent
+
+        self.build_table(*self.parent_window.load_data())
+
+        self.connect('key-press-event', self.on_key_press)
+
+    def build_table(self, data, list_store_cols, treeview_cols) -> None:
 
         self.question_liststore = Gtk.ListStore(*list_store_cols)
         for row in data:
@@ -90,8 +96,6 @@ class QuestionTable(Gtk.TreeView):
             column = Gtk.TreeViewColumn(column_title, renderer, text=i)
             column.set_sort_column_id(i)
             self.append_column(column)
-
-        self.connect('key-press-event', self.on_key_press)
 
     def on_key_press(self, treeview, event) -> None:
 
@@ -118,7 +122,7 @@ class QuestionTable(Gtk.TreeView):
         # } ## TESTING
         
         if keyname == 'Return':
-            new_window = QuestionWindow(question_content)
+            new_window = QuestionWindow(self.parent_window, question_content)
             new_window.show_all()
 
 
@@ -159,10 +163,11 @@ class OverviewControlPanel(Gtk.ActionBar):
 
 class QuestionWindow(Gtk.Window):
 
-    def __init__(self, question_content: dict):
+    def __init__(self, parent, question_content: dict):
 
         super().__init__(title=question_content['name'])
         self.set_size_request(600, 400)
+        self.parent_window = parent
 
         self.grid = Gtk.Grid()
         self.grid.set_column_homogeneous(True)
@@ -233,9 +238,8 @@ class QuestionControlPanel(Gtk.ActionBar):
 
         super().__init__()
         self.parent_window = parent
-        self.page = self.parent_window.notebook.get_nth_page(
-            self.parent_window.notebook.get_current_page()
-        )
+        self.overview = self.parent_window.parent_window
+        self.table = self.overview.table
 
         self.save_button = Gtk.Button(label='Save')
         self.pack_start(self.save_button)
@@ -246,14 +250,6 @@ class QuestionControlPanel(Gtk.ActionBar):
         self.delete_button.connect('clicked', self.on_delete_clicked)
 
     def on_save_clicked(self, button) -> None:
-
-        self.page.content = self.page.update_content()
-        # Check if question already exists in database
-        question_name = self.page.content['name']
-        if not QUESTIONS.find_one({'name': question_name}):
-            save_question()
-        else:
-            overwrite_question()
 
         def save_question() -> None:
             dialog = Gtk.MessageDialog(
@@ -268,7 +264,8 @@ class QuestionControlPanel(Gtk.ActionBar):
                 # Update database
                 QUESTIONS.insert_one(self.page.content)
                 # Update QuestionTable
-                ## CONTINUE HERE
+                self.table.question_liststore.clear()
+                self.table.build_table(*self.overview.load_data())
             elif response == Gtk.ResponseType.NO:
                 pass
             dialog.destroy()
@@ -290,27 +287,87 @@ class QuestionControlPanel(Gtk.ActionBar):
                         {'$set': {k: v}}
                     )
                 # Update QuestionTable
-                ## CONTINUE HERE
+                self.table.question_liststore.clear()
+                self.table.build_table(*self.overview.load_data())
+                # Close question window
+                dialog.destroy()
+                self.parent_window.destroy()
             elif response == Gtk.ResponseType.NO:
-                pass
-            dialog.destroy()
-            self.parent_window.destroy()
+                dialog.destroy()
+
+        self.page = self.parent_window.notebook.get_nth_page(
+            self.parent_window.notebook.get_current_page()
+        )
+        new_content = self.page.update_content()
+        self.page.overwrite(new_content)
+        question_name = self.page.content['name']
+        # Check if any changes were made to question
+        db_question = QUESTIONS.find_one({'name': question_name})
+        try:
+            db_question.pop('_id')
+            if self.page.content == db_question:
+                dialog = Gtk.MessageDialog(
+                    transient_for=self.parent_window,
+                    message_type=Gtk.MessageType.INFO,
+                    buttons=Gtk.ButtonsType.OK,
+                    text=f'Nothing to save.'
+                )
+                dialog.format_secondary_text('No changes were made to ' +
+                                             f'{question_name}.')
+                dialog.run()
+                dialog.destroy()
+                return None
+        # When db_question == None
+        except AttributeError:
+            pass
+        # Check if question already exists in database
+        if not db_question:
+            save_question()
+        else:
+            overwrite_question()
 
     def on_delete_clicked(self, button) -> None:
-        dialog = Gtk.MessageDialog(
-            transient_for=self.parent_window,
-            message_type=Gtk.MessageType.INFO,
-            buttons=Gtk.ButtonsType.YES_NO,
-            text=f'Are you sure you want to delete {self.page.content["name"]}?'
+
+        self.page = self.parent_window.notebook.get_nth_page(
+            self.parent_window.notebook.get_current_page()
         )
-        dialog.format_secondary_text('Changes are irreversible!')
-        response = dialog.run()
-        if response == Gtk.ResponseType.YES:
-            print('y')
-        elif response == Gtk.ResponseType.NO:
-            print('n')
-        dialog.destroy()
-        self.parent_window.destroy()
+        new_content = self.page.update_content()
+        self.page.overwrite(new_content)
+        question_name = self.page.content['name']
+        db_question = QUESTIONS.find_one({'name': question_name})
+
+        # Check if question is in DB
+        if not db_question:
+            dialog = Gtk.MessageDialog(
+                    transient_for=self.parent_window,
+                    message_type=Gtk.MessageType.INFO,
+                    buttons=Gtk.ButtonsType.OK,
+                    text=f'Nothing to delete.'
+                )
+            dialog.format_secondary_text(f'{question_name} ' +
+                                         "doesn't exist in database!")
+            dialog.run()
+            dialog.destroy()
+            return None
+        else:
+            dialog = Gtk.MessageDialog(
+                transient_for=self.parent_window,
+                message_type=Gtk.MessageType.INFO,
+                buttons=Gtk.ButtonsType.YES_NO,
+                text=f'Are you sure you want to delete {question_name}?'
+            )
+            dialog.format_secondary_text('Changes are irreversible!')
+            response = dialog.run()
+            if response == Gtk.ResponseType.YES:
+                QUESTIONS.delete_one({'name': question_name})
+                # Update QuestionTable
+                self.table.question_liststore.clear()
+                self.table.build_table(*self.overview.load_data())
+                # Close question window
+                dialog.destroy()
+                self.parent_window.destroy()
+            elif response == Gtk.ResponseType.NO:
+                dialog.destroy()
 
 
 class GeneralQuestionGrid(Gtk.Grid):
