@@ -18,6 +18,7 @@ def check_question(json_string: str) -> dict:
     ------------------
     Dependencies: json
     """
+
     question_dict = json.loads(json_string)
     result_dict = {}
 

@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import json
 import time
+import threading
 import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk
@@ -1063,6 +1064,11 @@ class RawQuestionText(Gtk.TextView):
 
 def gtk_overview() -> None:
 
-    win = Overview()
-    win.show_all()
-    Gtk.main()
+    def run_overview() -> None:
+        win = Overview()
+        win.show_all()
+        Gtk.main()
+
+    thread = threading.Thread(target=run_overview)
+    thread.daemon = True
+    thread.start()
