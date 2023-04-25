@@ -11,9 +11,17 @@ import re
 import json
 
 
-def check_question(json_string: str) -> dict:
+def check_question(json_string: str, ignore_duplicates: bool = False) -> dict:
     """
     Used by add_json() to check for correct question formatting.
+
+    Arguments:
+    ----------
+    json_string (str):
+      String that will be interpreted as JSON.
+    ignore_duplicates (bool):
+      If set to True, duplicate question names in database won't be classified
+      as formatting errors. Used specifically for overwriting questions in GUI.
 
     ------------------
     Dependencies: json
@@ -70,8 +78,9 @@ def check_question(json_string: str) -> dict:
             if question['name'][:-4] not in Q_CATEGORIES:
                 result_dict['name'] = 'Wrong naming scheme'
         # Check for duplicate question name
-        if QUESTIONS.find_one({'name': question['name']}):
-            result_dict['name'] = 'Name already exists in database.'
+        if not ignore_duplicates:
+            if QUESTIONS.find_one({'name': question['name']}):
+                result_dict['name'] = 'Name already exists in database.'
         # Make sure family_type is one of three possibilities
         if 'family_type' not in result_dict.keys():
             check_in_options(

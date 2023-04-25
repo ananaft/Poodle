@@ -1,4 +1,5 @@
 from config import *
+from question import check_question
 
 import pandas as pd
 import numpy as np
@@ -306,6 +307,10 @@ class QuestionControlPanel(Gtk.ActionBar):
         self.overview = self.parent_window.parent_window
         self.table = self.overview.table
 
+        self.print_button = Gtk.Button(label='Print') ## TESTING
+        self.pack_start(self.print_button)
+        self.print_button.connect('clicked', self.on_print_clicked)
+
         self.save_button = Gtk.Button(label='Save')
         self.pack_start(self.save_button)
         self.save_button.connect('clicked', self.on_save_clicked)
@@ -313,6 +318,37 @@ class QuestionControlPanel(Gtk.ActionBar):
         self.delete_button = Gtk.Button(label='Delete')
         self.pack_end(self.delete_button)
         self.delete_button.connect('clicked', self.on_delete_clicked)
+
+    def on_print_clicked(self, button): ## TESTING
+        self.page = self.parent_window.notebook.get_nth_page(
+            self.parent_window.notebook.get_current_page()
+        )
+        print(len(self.page.get_children()))
+        for i in self.page.get_children():
+            print(i)
+
+    # Initialized every time save button is clicked
+    def check_question_dialog(self, question_content: dict):
+
+        check_result = check_question(json.dumps(
+            self.page.content, ensure_ascii=False
+        ), ignore_duplicates=True)
+        if check_result:
+            check_result.pop('__question_name__')
+            dialog = Gtk.MessageDialog(
+                transient_for=self.parent_window,
+                message_type=Gtk.MessageType.INFO,
+                buttons=Gtk.ButtonsType.OK,
+                text=f'{self.page.content["name"]} has formatting errors:'
+            )
+            dialog.format_secondary_text(
+                json.dumps(check_result, ensure_ascii=False, indent=4)
+            )
+            dialog.run()
+            dialog.destroy()
+            return check_result
+        else:
+            return None
 
     def on_save_clicked(self, button) -> None:
 
@@ -326,25 +362,10 @@ class QuestionControlPanel(Gtk.ActionBar):
             dialog.format_secondary_text('')
             response = dialog.run()
             if response == Gtk.ResponseType.YES:
-                # Check question
-                check_result = check_question(json.dumps(self.page.content,
-                                                         ensure_ascii=False))
-                # Don't update database if question contains errors
-                if check_result:
-                    check_result.pop('__question_name__')
-                    check_dialog = Gtk.MessageDialog(
-                        transient_for=self.parent_window,
-                        message_type=Gtk.MessageType.INFO,
-                        buttons=Gtk.ButtonsType.OK,
-                        text=f'{self.page.content["name"]} has formatting errors:'
-                    )
-                    check_dialog.format_secondary_text(
-                        json.dumps(check_result, ensure_ascii=False, indent=4)
-                    )
-                    dialog.run()
-                    dialog.destroy()
-                else:
-                    # Update database
+                # Check question for correct formatting
+                check_result = self.check_question_dialog(self.page.content)
+                # Update database if question contains no errors
+                if not check_result:
                     QUESTIONS.insert_one(self.page.content)
                     # Update QuestionTable
                     self.table.question_liststore.clear()
@@ -363,38 +384,21 @@ class QuestionControlPanel(Gtk.ActionBar):
             dialog.format_secondary_text('Changes are irreversible!')
             response = dialog.run()
             if response == Gtk.ResponseType.YES:
-                # Check question
-                check_result = check_question(json.dumps(self.page.content,
-                                                         ensure_ascii=False))
-                # Don't update database if question contains errors
-                if check_result:
-                    check_result.pop('__question_name__')
-                    check_dialog = Gtk.MessageDialog(
-                        transient_for=self.parent_window,
-                        message_type=Gtk.MessageType.INFO,
-                        buttons=Gtk.ButtonsType.OK,
-                        text=f'{self.page.content["name"]} has formatting errors:'
-                    )
-                    check_dialog.format_secondary_text(
-                        json.dumps(check_result, ensure_ascii=False, indent=4)
-                    )
-                    dialog.run()
-                    dialog.destroy()
-                else:
-                    # Update database
+                # Check question for correct formatting
+                check_result = self.check_question_dialog(self.page.content)
+                # Update database if question contains no errors
+                if not check_result:
                     for k, v in self.page.content.items():
                         QUESTIONS.find_one_and_update(
                             {'name': self.page.content['name']},
                             {'$set': {k: v}}
                         )
-                        # Update QuestionTable
-                        self.table.question_liststore.clear()
-                        self.table.build_table(*self.overview.load_data())
-                        # Close question window
-                        dialog.destroy()
-                        self.parent_window.destroy()
+                    # Update QuestionTable
+                    self.table.question_liststore.clear()
+                    self.table.build_table(*self.overview.load_data())
             elif response == Gtk.ResponseType.NO:
-                dialog.destroy()
+                pass
+            dialog.destroy()
 
         self.page = self.parent_window.notebook.get_nth_page(
             self.parent_window.notebook.get_current_page()
