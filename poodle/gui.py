@@ -65,7 +65,6 @@ class Overview(Gtk.Window):
         transform = lambda x: int(type(x) == float)
         appearances = df[exam_list].applymap(transform).sum(axis=1)
         df.insert(1, 'appearances', appearances)
-        # df = pd.read_csv('/home/lukas/Nextcloud/poodle/databases/testing/questions.csv') ## TESTING
 
         data = row_to_list(df)
         column_types = [numpy_to_native(x.type) for x in list(df.dtypes)]
@@ -98,33 +97,95 @@ class QuestionTable(Gtk.TreeView):
             column.set_sort_column_id(i)
             self.append_column(column)
 
-    def on_key_press(self, treeview, event) -> None:
+    # Create window for new question
+    def new_question(self) -> None:
 
-        keyname = Gdk.keyval_name(event.keyval)
-        selected_row = treeview.get_selection()
+        # Fill question_content with default values for data types
+        def default_fill(output_type: type): # which argument is needed?
+            if output_type == str:
+                return ''
+            elif output_type == int:
+                return 0
+            elif output_type == float:
+                return 0.0
+            elif output_type == list:
+                return []
+            elif output_type == dict:
+                return {}
+
+        question_content = {
+            k: default_fill(v) for k, v in KEY_TYPES['general'].items()
+        }
+        question_content['name'] = 'New question'
+        # Ask for moodle_type
+        dialog = Gtk.MessageDialog(
+            transient_for=self.parent_window,
+            message_type=Gtk.MessageType.OTHER,
+            buttons=Gtk.ButtonsType.OK_CANCEL,
+            text=f'Please pick a Moodle type for the new question:'
+        )
+        # Add list of moodle types to dialog
+        box = dialog.get_message_area()
+        moodle_types = Gtk.ComboBoxText()
+        for mt in KEY_TYPES.keys():
+            if mt != 'general' and mt != 'optional':
+                moodle_types.append_text(mt)
+        moodle_types.set_active(0)
+        box.pack_end(moodle_types, True, True, 10)
+        box.show_all()
+        # Create new question or cancel
+        response = dialog.run()
+        if response == Gtk.ResponseType.OK:
+            # Set remaining fields based on moodle_type
+            question_content['moodle_type'] = moodle_types.get_active_text()
+            question_content.update({
+                k: default_fill(v) for k, v in
+                KEY_TYPES[question_content['moodle_type']].items()
+            })
+            new_window = QuestionWindow(self.parent_window, question_content)
+            # Make certain fields editable
+            new_window.notebook.question_grid.name_field.set_editable(True)
+            new_window.notebook.question_grid.family_type_field.set_editable(True)
+            new_window.show_all()
+        elif response == Gtk.ResponseType.CANCEL:
+            pass
+        dialog.destroy()
+
+    # Show existing question
+    def view_question(self) -> None:
+
+        selected_row = self.get_selection()
         model, treeiter = selected_row.get_selected()
         question_name = model[treeiter][0]
         question_content = QUESTIONS.find_one({'name': question_name})
         question_content.pop('_id')
-        # question_content = {
-        #     'name': 'mytest0199',
-        #     'moodle_type': 'multichoice',
-        #     'question': 'Setzen Sie die Einkommensvariable in Fällen, in denen sie 0 ist, auf Missing. Sortieren Sie den Datensatz aufsteigend nach Einkommen. Ermitteln Sie das <i>Haushaltseinkommen</i> der Person mit dem fünftniedrigsten Einkommen.',
-        #     'correct_answers': ["a", "b", "c", "d"],
-        #     'false_answers': [],
-        #     'single': 1,
-        #     'points': 4,
-        #     'difficulty': 1,
-        #     'time_est': 1,
-        #     'family_type': 'single',
-        #     'in_exams': {'20190212': 3.5,
-        #                  '20201108': 2},
-        #     'zzz': 42
-        # } ## TESTING
-        
-        if keyname == 'Return':
-            new_window = QuestionWindow(self.parent_window, question_content)
-            new_window.show_all()
+
+        new_window = QuestionWindow(self.parent_window, question_content)
+        new_window.show_all()
+
+    # Handle button presses
+    def on_button_press(self, button) -> None:
+
+        button_name = button.get_property('label')
+
+        match button_name:
+            case 'New':
+                self.new_question()
+            case 'View':
+                self.view_question()
+
+    # Handle key presses
+    def on_key_press(self, treeview, event) -> None:
+
+        key_name = Gdk.keyval_name(event.keyval)
+
+        match key_name:
+            case 'v':
+                self.view_question()
+            case 'Return':
+                self.view_question()
+            case 'n':
+                self.new_question()
 
 
 class OverviewControlPanel(Gtk.ActionBar):
@@ -133,13 +194,16 @@ class OverviewControlPanel(Gtk.ActionBar):
 
         super().__init__()
         self.parent_window = parent
+        self.table = self.parent_window.table
 
         self.new_button = Gtk.Button(label='New')
         self.pack_start(self.new_button)
+        self.new_button.connect('clicked', self.table.on_button_press)
 
         self.view_button = Gtk.Button(label='View')
         self.pack_start(self.view_button)
-        
+        self.view_button.connect('clicked', self.table.on_button_press)
+
         self.add_to_exam_button = Gtk.Button(label='Add to exam')
         self.pack_start(self.add_to_exam_button)
 
@@ -262,11 +326,29 @@ class QuestionControlPanel(Gtk.ActionBar):
             dialog.format_secondary_text('')
             response = dialog.run()
             if response == Gtk.ResponseType.YES:
-                # Update database
-                QUESTIONS.insert_one(self.page.content)
-                # Update QuestionTable
-                self.table.question_liststore.clear()
-                self.table.build_table(*self.overview.load_data())
+                # Check question
+                check_result = check_question(json.dumps(self.page.content,
+                                                         ensure_ascii=False))
+                # Don't update database if question contains errors
+                if check_result:
+                    check_result.pop('__question_name__')
+                    check_dialog = Gtk.MessageDialog(
+                        transient_for=self.parent_window,
+                        message_type=Gtk.MessageType.INFO,
+                        buttons=Gtk.ButtonsType.OK,
+                        text=f'{self.page.content["name"]} has formatting errors:'
+                    )
+                    check_dialog.format_secondary_text(
+                        json.dumps(check_result, ensure_ascii=False, indent=4)
+                    )
+                    dialog.run()
+                    dialog.destroy()
+                else:
+                    # Update database
+                    QUESTIONS.insert_one(self.page.content)
+                    # Update QuestionTable
+                    self.table.question_liststore.clear()
+                    self.table.build_table(*self.overview.load_data())
             elif response == Gtk.ResponseType.NO:
                 pass
             dialog.destroy()
@@ -281,18 +363,36 @@ class QuestionControlPanel(Gtk.ActionBar):
             dialog.format_secondary_text('Changes are irreversible!')
             response = dialog.run()
             if response == Gtk.ResponseType.YES:
-                # Update database
-                for k, v in self.page.content.items():
-                    QUESTIONS.find_one_and_update(
-                        {'name': self.page.content['name']},
-                        {'$set': {k: v}}
+                # Check question
+                check_result = check_question(json.dumps(self.page.content,
+                                                         ensure_ascii=False))
+                # Don't update database if question contains errors
+                if check_result:
+                    check_result.pop('__question_name__')
+                    check_dialog = Gtk.MessageDialog(
+                        transient_for=self.parent_window,
+                        message_type=Gtk.MessageType.INFO,
+                        buttons=Gtk.ButtonsType.OK,
+                        text=f'{self.page.content["name"]} has formatting errors:'
                     )
-                # Update QuestionTable
-                self.table.question_liststore.clear()
-                self.table.build_table(*self.overview.load_data())
-                # Close question window
-                dialog.destroy()
-                self.parent_window.destroy()
+                    check_dialog.format_secondary_text(
+                        json.dumps(check_result, ensure_ascii=False, indent=4)
+                    )
+                    dialog.run()
+                    dialog.destroy()
+                else:
+                    # Update database
+                    for k, v in self.page.content.items():
+                        QUESTIONS.find_one_and_update(
+                            {'name': self.page.content['name']},
+                            {'$set': {k: v}}
+                        )
+                        # Update QuestionTable
+                        self.table.question_liststore.clear()
+                        self.table.build_table(*self.overview.load_data())
+                        # Close question window
+                        dialog.destroy()
+                        self.parent_window.destroy()
             elif response == Gtk.ResponseType.NO:
                 dialog.destroy()
 
