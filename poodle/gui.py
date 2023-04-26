@@ -938,6 +938,9 @@ class SimpleListGrid(Gtk.Grid):
 
     def add_row(self, button):
 
+        self.n_rows = len(
+            [x for x in self.get_children() if type(x) != Gtk.Button]
+        )
         entry = Gtk.Entry()
         entry.set_hexpand(True)
         self.insert_row(self.n_rows)
@@ -948,22 +951,29 @@ class SimpleListGrid(Gtk.Grid):
 
     def get_content(self) -> list:
 
-        if hasattr(self, 'add_button'):
-            content = [x.get_text() for x in self.get_children()[:0:-1]]
-        else:
-            content = [x.get_text() for x in self.get_children()[::-1]]
+        content = reversed([
+            x.get_text() for x in self.get_children() if
+            type(x) != Gtk.Button
+        ])
 
         if type(self.output_type) == list: # calculated tolerance field needs different types
             return [x[0](x[1]) for x in zip(self.output_type, content)]
         else:
             return [self.output_type(x) for x in content]
 
-    def overwrite(self, input_list: list):
+    def overwrite(self, input_list: list) -> None:
 
-        values_entries = zip(input_list, reversed(self.get_children()))
-        
-        for i, j in values_entries:
-            j.set_text(str(i))
+        # Delete old entries
+        for c in self.get_children():
+            if type(c) != Gtk.Button:
+                self.remove(c)
+        # Add new values as new entries
+        for n, x in enumerate(input_list):
+            entry = Gtk.Entry()
+            entry.set_hexpand(True)
+            entry.set_text(str(x))
+            self.attach(entry, 0, n, 1, 1)
+            entry.show()
 
 
 class SimpleDictGrid(Gtk.Grid):
