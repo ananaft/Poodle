@@ -951,10 +951,12 @@ class SimpleListGrid(Gtk.Grid):
 
     def get_content(self) -> list:
 
-        content = reversed([
+        content = list(reversed([
             x.get_text() for x in self.get_children() if
             type(x) != Gtk.Button
-        ])
+        ]))
+        # Remove empty strings from list
+        content = [x for x in content if x != '']
 
         if type(self.output_type) == list: # calculated tolerance field needs different types
             return [x[0](x[1]) for x in zip(self.output_type, content)]
