@@ -102,7 +102,7 @@ class QuestionTable(Gtk.TreeView):
     def new_question(self) -> None:
 
         # Fill question_content with default values for data types
-        def default_fill(output_type: type): # which argument is needed?
+        def default_fill(moodle_type: str, field_name: str, output_type: type):
             if output_type == str:
                 return ''
             elif output_type == int:
@@ -110,12 +110,19 @@ class QuestionTable(Gtk.TreeView):
             elif output_type == float:
                 return 0.0
             elif output_type == list:
-                return []
+                # Some SimpleListGrid fields without add button
+                # need to be handled separately
+                if moodle_type == 'essay' and field_name == 'answer_files':
+                    return ['', '']
+                elif moodle_type == 'calculated' and field_name == 'tolerance':
+                    return ['', '', '']
+                else:
+                    return ['']
             elif output_type == dict:
                 return {}
 
         question_content = {
-            k: default_fill(v) for k, v in KEY_TYPES['general'].items()
+            k: default_fill('general', k, v) for k, v in KEY_TYPES['general'].items()
         }
         question_content['name'] = 'New question'
         # Ask for moodle_type
@@ -140,7 +147,7 @@ class QuestionTable(Gtk.TreeView):
             # Set remaining fields based on moodle_type
             question_content['moodle_type'] = moodle_types.get_active_text()
             question_content.update({
-                k: default_fill(v) for k, v in
+                k: default_fill(question_content['moodle_type'], k, v) for k, v in
                 KEY_TYPES[question_content['moodle_type']].items()
             })
             new_window = QuestionWindow(self.parent_window, question_content)
@@ -307,10 +314,6 @@ class QuestionControlPanel(Gtk.ActionBar):
         self.overview = self.parent_window.parent_window
         self.table = self.overview.table
 
-        self.print_button = Gtk.Button(label='Print') ## TESTING
-        self.pack_start(self.print_button)
-        self.print_button.connect('clicked', self.on_print_clicked)
-
         self.save_button = Gtk.Button(label='Save')
         self.pack_start(self.save_button)
         self.save_button.connect('clicked', self.on_save_clicked)
@@ -318,14 +321,6 @@ class QuestionControlPanel(Gtk.ActionBar):
         self.delete_button = Gtk.Button(label='Delete')
         self.pack_end(self.delete_button)
         self.delete_button.connect('clicked', self.on_delete_clicked)
-
-    def on_print_clicked(self, button): ## TESTING
-        self.page = self.parent_window.notebook.get_nth_page(
-            self.parent_window.notebook.get_current_page()
-        )
-        print(len(self.page.get_children()))
-        for i in self.page.get_children():
-            print(i)
 
     # Initialized every time save button is clicked
     def check_question_dialog(self, question_content: dict):
