@@ -171,6 +171,38 @@ class QuestionTable(Gtk.TreeView):
         new_window = QuestionWindow(self.parent_window, question_content)
         new_window.show_all()
 
+    # Add questions to exam
+    def add_to_exam(self) -> None:
+
+        # Create ExamWindow if it doesn't exist already
+        if not hasattr(self.parent_window, 'exam_window'):
+            # Ask for exam name
+            dialog = Gtk.MessageDialog(
+                transient_for=self.parent_window,
+                message_type=Gtk.MessageType.INFO,
+                buttons=Gtk.ButtonsType.OK_CANCEL,
+                text='Please enter exam name:'
+            )
+            box = dialog.get_message_area()
+            name_entry = Gtk.Entry()
+            box.pack_end(name_entry, True, True, 10)
+            box.show_all()
+            # Create exam or cancel
+            response = dialog.run()
+            if response == Gtk.ResponseType.OK:
+                exam_name = name_entry.get_text()
+                self.parent_window.exam_window = ExamWindow(exam_name)
+                self.parent_window.exam_window.show_all()
+            elif response == Gtk.ResponseType.CANCEL:
+                pass
+            dialog.destroy()
+        # Add question name to exam window
+        selected_row = self.get_selection()
+        model, treeiter = selected_row.get_selected()
+        question_name = model[treeiter][0]
+
+        self.parent_window.exam_window.add_question(question_name)
+
     # Handle button presses
     def on_button_press(self, button) -> None:
 
@@ -181,6 +213,8 @@ class QuestionTable(Gtk.TreeView):
                 self.new_question()
             case 'View':
                 self.view_question()
+            case 'Add to exam':
+                self.add_to_exam()
 
     # Handle key presses
     def on_key_press(self, treeview, event) -> None:
@@ -194,6 +228,8 @@ class QuestionTable(Gtk.TreeView):
                 self.view_question()
             case 'n':
                 self.new_question()
+            case 'a':
+                self.add_to_exam()
 
 
 class OverviewControlPanel(Gtk.ActionBar):
@@ -205,14 +241,15 @@ class OverviewControlPanel(Gtk.ActionBar):
         self.table = self.parent_window.table
 
         self.new_button = Gtk.Button(label='New')
-        self.pack_start(self.new_button)
         self.new_button.connect('clicked', self.table.on_button_press)
+        self.pack_start(self.new_button)
 
         self.view_button = Gtk.Button(label='View')
-        self.pack_start(self.view_button)
         self.view_button.connect('clicked', self.table.on_button_press)
+        self.pack_start(self.view_button)
 
         self.add_to_exam_button = Gtk.Button(label='Add to exam')
+        self.add_to_exam_button.connect('clicked', self.table.on_button_press)
         self.pack_start(self.add_to_exam_button)
 
         # Filter functionality
@@ -315,12 +352,12 @@ class QuestionControlPanel(Gtk.ActionBar):
         self.table = self.overview.table
 
         self.save_button = Gtk.Button(label='Save')
-        self.pack_start(self.save_button)
         self.save_button.connect('clicked', self.on_save_clicked)
+        self.pack_start(self.save_button)
 
         self.delete_button = Gtk.Button(label='Delete')
-        self.pack_end(self.delete_button)
         self.delete_button.connect('clicked', self.on_delete_clicked)
+        self.pack_end(self.delete_button)
 
     # Initialized every time save button is clicked
     def check_question_dialog(self, question_content: dict):
@@ -1173,6 +1210,68 @@ class RawQuestionText(Gtk.TextView):
         )
 
 
+class ExamWindow(Gtk.Window):
+
+    def __init__(self, exam_name: str):
+        super().__init__(title=exam_name)
+        self.set_size_request(400, 600)
+
+        self.grid = Gtk.Grid()
+        self.grid.set_column_homogeneous(True)
+        self.add(self.grid)
+
+        self.scroll_window = Gtk.ScrolledWindow()
+        self.scroll_window.set_vexpand(True)
+
+        self.text_view = Gtk.TextView(wrap_mode=Gtk.WrapMode(3))
+        self.text_view.set_hexpand(True)
+        self.textbuffer = self.text_view.get_buffer()
+        self.scroll_window.add(self.text_view)
+
+        self.control = ExamControlPanel(self)
+
+        self.grid.attach(self.scroll_window, 0, 0, 1, 1)
+        self.grid.attach_next_to(self.control, self.scroll_window,
+                                 Gtk.PositionType.BOTTOM, 1, 1)
+    
+    def add_question(self, question_name: str) -> None:
+        previous_text = self.textbuffer.get_text(
+            self.textbuffer.get_start_iter(),
+            self.textbuffer.get_end_iter(),
+            include_hidden_chars=True
+        )
+        # First question doesn't need newline
+        if previous_text == '':
+            self.textbuffer.set_text(f'{question_name}')
+        else:
+            self.textbuffer.set_text(previous_text + f'\n{question_name}')
+
+    def show_report(self) -> None:
+        # Gtk.Window or dialog?
+        # live updates?
+        return 0
+
+    def create_exam(self) -> None:
+        return 0
+
+
+class ExamControlPanel(Gtk.ActionBar):
+
+    def __init__(self, parent):
+
+        super().__init__()
+        self.parent_window = parent
+
+        self.report_button = Gtk.Button(label='Report')
+        self.report_button.connect('clicked', self.parent_window.show_report)
+        self.pack_start(self.report_button)
+
+        self.create_button = Gtk.Button(label='Create exam')
+        self.create_button.connect('clicked', self.parent_window.create_exam)
+        self.pack_end(self.create_button)
+
+
+# Function to initialize overview
 def gtk_overview() -> None:
 
     def run_overview() -> None:
