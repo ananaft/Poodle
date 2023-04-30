@@ -176,6 +176,8 @@ class QuestionTable(Gtk.TreeView):
 
         # Create ExamWindow if it doesn't exist already
         if not hasattr(self.parent_window, 'exam_window'):
+            # Placeholder attribute so that ExamWindow __init__ throws no error
+            self.parent_window.exam_window = None
             # Ask for exam name
             dialog = Gtk.MessageDialog(
                 transient_for=self.parent_window,
@@ -191,7 +193,9 @@ class QuestionTable(Gtk.TreeView):
             response = dialog.run()
             if response == Gtk.ResponseType.OK:
                 exam_name = name_entry.get_text()
-                self.parent_window.exam_window = ExamWindow(exam_name)
+                self.parent_window.exam_window = ExamWindow(
+                    self.parent_window, exam_name
+                )
                 self.parent_window.exam_window.show_all()
             elif response == Gtk.ResponseType.CANCEL:
                 pass
@@ -1212,13 +1216,20 @@ class RawQuestionText(Gtk.TextView):
 
 class ExamWindow(Gtk.Window):
 
-    def __init__(self, exam_name: str):
+    def __init__(self, parent, exam_name: str):
         super().__init__(title=exam_name)
-        self.set_size_request(400, 600)
+        self.set_size_request(700, 600)
+        self.parent_window = parent
+        self.connect('destroy', self.remove_parent_attribute)
 
-        self.grid = Gtk.Grid()
-        self.grid.set_column_homogeneous(True)
-        self.add(self.grid)
+        self.panes = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
+        self.panes.set_position(350)
+        self.add(self.panes)
+
+        # Left pane
+        self.left_grid = Gtk.Grid()
+        self.left_grid.set_column_homogeneous(True)
+        self.panes.add1(self.left_grid)
 
         self.scroll_window = Gtk.ScrolledWindow()
         self.scroll_window.set_vexpand(True)
@@ -1230,9 +1241,38 @@ class ExamWindow(Gtk.Window):
 
         self.control = ExamControlPanel(self)
 
-        self.grid.attach(self.scroll_window, 0, 0, 1, 1)
-        self.grid.attach_next_to(self.control, self.scroll_window,
+        self.left_grid.attach(self.scroll_window, 0, 0, 1, 1)
+        self.left_grid.attach_next_to(self.control, self.scroll_window,
                                  Gtk.PositionType.BOTTOM, 1, 1)
+
+        # Right pane
+        self.right_grid = Gtk.Grid()
+        self.right_grid.set_column_spacing(50)
+        self.right_grid.set_row_spacing(10)
+        self.panes.add2(self.right_grid)
+
+        self.time_label = Gtk.Label(label='Estimated exam time: ')
+        self.right_grid.attach(self.time_label, 0, 0, 2, 1)
+        self.time_value = Gtk.Label()
+        self.time_value.set_property('name', 'time')
+        self.right_grid.attach_next_to(self.time_value, self.time_label,
+                                       Gtk.PositionType.RIGHT, 1, 1)
+
+        self.difficulty_label = Gtk.Label(label='Average estimated difficulty: ')
+        self.right_grid.attach_next_to(self.difficulty_label, self.time_label,
+                                       Gtk.PositionType.BOTTOM, 2, 1)
+        self.difficulty_value = Gtk.Label()
+        self.difficulty_value.set_property('name', 'difficulty')
+        self.right_grid.attach_next_to(self.difficulty_value, self.difficulty_label,
+                                       Gtk.PositionType.RIGHT, 1, 1)
+
+        self.points_label = Gtk.Label(label='Maximum achievable points: ')
+        self.right_grid.attach_next_to(self.points_label, self.difficulty_label,
+                                       Gtk.PositionType.BOTTOM, 2, 1)
+        self.points_value = Gtk.Label()
+        self.points_value.set_property('name', 'points')
+        self.right_grid.attach_next_to(self.points_value, self.points_label,
+                                       Gtk.PositionType.RIGHT, 1, 1)
     
     def add_question(self, question_name: str) -> None:
         previous_text = self.textbuffer.get_text(
@@ -1246,13 +1286,47 @@ class ExamWindow(Gtk.Window):
         else:
             self.textbuffer.set_text(previous_text + f'\n{question_name}')
 
-    def show_report(self) -> None:
-        # Gtk.Window or dialog?
-        # live updates?
+        self.update_report(None)
+
+    def update_report(self, button) -> None:
+
+        question_list = self.textbuffer.get_text(
+            self.textbuffer.get_start_iter(),
+            self.textbuffer.get_end_iter(),
+            include_hidden_chars=True
+        ).split()
+        # Calculate estimated time
+        time_value = list(filter(
+            lambda x: (x.get_property('name') == 'time'),
+            self.right_grid.get_children()
+        ))[0]
+        time_est = sum([QUESTIONS.find_one({'name': q})['time_est']
+                        for q in question_list])
+        time_value.set_label(str(time_est))
+        # Calculate average difficulty
+        difficulty_value = list(filter(
+            lambda x: (x.get_property('name') == 'difficulty'),
+            self.right_grid.get_children()
+        ))[0]
+        difficulty_avg = np.round(np.mean(
+            [QUESTIONS.find_one({'name': q})['difficulty'] for q in question_list]
+        ), 2)
+        difficulty_value.set_label(str(difficulty_avg))
+        # Calculate max points
+        points_value = list(filter(
+            lambda x: (x.get_property('name') == 'points'),
+            self.right_grid.get_children()
+        ))[0]
+        max_points = sum(
+            [QUESTIONS.find_one({'name': q})['points'] for q in question_list]
+        )
+        points_value.set_label(str(max_points))
+
+    def create_exam(self, button) -> None:
         return 0
 
-    def create_exam(self) -> None:
-        return 0
+    def remove_parent_attribute(self, window):
+        delattr(self.parent_window, 'exam_window')
 
 
 class ExamControlPanel(Gtk.ActionBar):
@@ -1262,13 +1336,13 @@ class ExamControlPanel(Gtk.ActionBar):
         super().__init__()
         self.parent_window = parent
 
-        self.report_button = Gtk.Button(label='Report')
-        self.report_button.connect('clicked', self.parent_window.show_report)
-        self.pack_start(self.report_button)
-
         self.create_button = Gtk.Button(label='Create exam')
         self.create_button.connect('clicked', self.parent_window.create_exam)
-        self.pack_end(self.create_button)
+        self.pack_start(self.create_button)
+
+        self.update_report_button = Gtk.Button(label='Update report')
+        self.update_report_button.connect('clicked', self.parent_window.update_report)
+        self.pack_end(self.update_report_button)
 
 
 # Function to initialize overview
