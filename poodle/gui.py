@@ -1,5 +1,7 @@
 from config import *
+from core import *
 from question import check_question
+from exam import create_exam
 
 import pandas as pd
 import numpy as np
@@ -1323,7 +1325,30 @@ class ExamWindow(Gtk.Window):
         points_value.set_label(str(max_points))
 
     def create_exam(self, button) -> None:
-        return 0
+
+        self.update_report(None)
+        question_list = self.textbuffer.get_text(
+            self.textbuffer.get_start_iter(),
+            self.textbuffer.get_end_iter(),
+            include_hidden_chars=True
+        ).split()
+        # Ask if selected questions are correct
+        dialog = Gtk.MessageDialog(
+            transient_for=self.parent_window,
+            message_type=Gtk.MessageType.INFO,
+            buttons=Gtk.ButtonsType.YES_NO,
+            text=('Are you sure you want to create ' +
+                  f'{self.get_property("title")} with the current ' +
+                  'question selection?')
+        )
+        response = dialog.run()
+        if response == Gtk.ResponseType.YES:
+            create_exam(self.get_property('title'), mode='gui',
+                        questions=question_list)
+            dialog.destroy()
+            self.destroy()
+        elif response == Gtk.ResponseType.NO:
+            dialog.destroy()
 
     def remove_parent_attribute(self, window):
         delattr(self.parent_window, 'exam_window')

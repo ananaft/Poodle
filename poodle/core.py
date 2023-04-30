@@ -827,7 +827,7 @@ class CalculatedQuestion(MoodleQuestion):
             child.text = str(len(rvn[v]))
 
 
-def create_xml(exam, filename='import.xml'):
+def create_xml(exam, filename='import.xml', mode='terminal', questions=None):
     # Create directory
     try:
         os.mkdir(f'{BASE_PATH}/databases/{DB.name}/exams/{exam}')
@@ -892,16 +892,19 @@ def create_xml(exam, filename='import.xml'):
 
             return None
 
-    def questionlist_auto():
-        # Open question list file
-        listfile = input(
-            ('Please specify whitespace-separated file which '
-             'contains the list of questions.\n')
-        )
-        while os.path.isfile(listfile) == False:
-            listfile = input('Please input correct path/filename: ')
-        with open(listfile, 'r') as rf:
-            questionlist = rf.read().split()
+    def questionlist_auto(questions=None):
+        if questions == None:
+            # Open question list file
+            listfile = input(
+                ('Please specify whitespace-separated file which '
+                 'contains the list of questions.\n')
+            )
+            while os.path.isfile(listfile) == False:
+                listfile = input('Please input correct path/filename: ')
+                with open(listfile, 'r') as rf:
+                    questionlist = rf.read().split()
+        else:
+            questionlist = questions
 
         # Clean question list
         questionlist_copy = copy.copy(questionlist)
@@ -961,14 +964,17 @@ def create_xml(exam, filename='import.xml'):
         return questionlist, info
 
     # Choose question list creation mode
-    mode_choice = fast_input(['auto', 'manual'],
-                             ('Please select a mode for question list creation. '
-                              "(Available: 'auto' or 'manual')\n")
-                             )
-    if mode_choice == 'auto':
-        questionlist, info = questionlist_auto()
-    elif mode_choice == 'manual':
-        questionlist, info = questionlist_manual()
+    if mode == 'terminal':
+        mode_choice = fast_input(['auto', 'manual'],
+                                 ('Please select a mode for question list creation. '
+                                  "(Available: 'auto' or 'manual')\n")
+                                 )
+        if mode_choice == 'auto':
+            questionlist, info = questionlist_auto()
+        elif mode_choice == 'manual':
+            questionlist, info = questionlist_manual()
+    elif mode == 'gui':
+        questionlist, info = questionlist_auto(questions)
 
     # Append XML
     for q in questionlist:

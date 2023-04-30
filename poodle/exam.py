@@ -9,7 +9,7 @@ import json
 import warnings
 import copy
 
-def create_exam(exam, filename='import.xml'):
+def create_exam(exam, filename='import.xml', mode='terminal', questions=None):
     """
     Creates an xml file out of questions within the database. While using this
     function the user will be asked whether they want to use automatic or manual
@@ -27,13 +27,18 @@ def create_exam(exam, filename='import.xml'):
       Name of the exam within Moodle/Poodle.
     filename (str):
       Name of the output xml file.
+    mode (str):
+      Changes behavior depending on if function is used in terminal or in GUI.
+    questions (list):
+      If used in GUI, a list of question names will be passed to this argument.
+      The argument isn't used otherwise.
 
     ------------------------------
     Dependencies: config, core, re
     """
 
     # Write XML
-    questionlist, info = create_xml(exam, filename)
+    questionlist, info = create_xml(exam, filename, mode, questions)
 
     # Update database
     EXAMS.insert_one({
