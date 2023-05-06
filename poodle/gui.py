@@ -199,9 +199,11 @@ class QuestionTable(Gtk.TreeView):
                     self.parent_window, exam_name
                 )
                 self.parent_window.exam_window.show_all()
+                dialog.destroy()
             elif response == Gtk.ResponseType.CANCEL:
-                pass
-            dialog.destroy()
+                dialog.destroy()
+                delattr(self.parent_window, 'exam_window')
+                return None
         # Add question name to exam window
         selected_row = self.get_selection()
         model, treeiter = selected_row.get_selected()
@@ -1297,6 +1299,33 @@ class ExamWindow(Gtk.Window):
             self.textbuffer.get_end_iter(),
             include_hidden_chars=True
         ).split()
+        # Check if all questions are in database
+        wrong_questions = [
+            q for q in question_list if QUESTIONS.find_one({'name': q}) == None
+        ]
+        if wrong_questions:
+            # Color wrong questions red
+            for q in wrong_questions:
+                search_match = self.textbuffer.get_start_iter().forward_search(
+                    q, 0, None
+                )
+                self.textbuffer.delete(search_match[0], search_match[1])
+                self.textbuffer.insert_markup(
+                    search_match[0],
+                    f'<span color="red">{q}</span>',
+                    -1
+                )
+            # Message user
+            dialog = Gtk.MessageDialog(
+                transient_for=self.parent_window,
+                message_type=Gtk.MessageType.INFO,
+                buttons=Gtk.ButtonsType.OK,
+                text=('Marked questions could not be found in database!')
+            )
+            dialog.run()
+            dialog.destroy()
+
+            return 1
         # Calculate estimated time
         time_value = list(filter(
             lambda x: (x.get_property('name') == 'time'),
@@ -1326,7 +1355,9 @@ class ExamWindow(Gtk.Window):
 
     def create_exam(self, button) -> None:
 
-        self.update_report(None)
+        if self.update_report(None) == 1:
+            return None
+
         question_list = self.textbuffer.get_text(
             self.textbuffer.get_start_iter(),
             self.textbuffer.get_end_iter(),
