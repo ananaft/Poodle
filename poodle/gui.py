@@ -87,18 +87,19 @@ class QuestionTable(Gtk.TreeView):
 
         self.connect('key-press-event', self.on_key_press)
 
-    def build_table(self, data, list_store_cols, treeview_cols) -> None:
+    def build_table(self, data, list_store_cols, treeview_cols, update=False) -> None:
 
         self.question_liststore = Gtk.ListStore(*list_store_cols)
         for row in data:
             self.question_liststore.append(row)
         self.set_model(self.question_liststore)
 
-        for i, column_title in enumerate(treeview_cols):
-            renderer = Gtk.CellRendererText()
-            column = Gtk.TreeViewColumn(column_title, renderer, text=i)
-            column.set_sort_column_id(i)
-            self.append_column(column)
+        if not update:
+            for i, column_title in enumerate(treeview_cols):
+                renderer = Gtk.CellRendererText()
+                column = Gtk.TreeViewColumn(column_title, renderer, text=i)
+                column.set_sort_column_id(i)
+                self.append_column(column)
 
     # Create window for new question
     def new_question(self) -> None:
@@ -409,7 +410,7 @@ class QuestionControlPanel(Gtk.ActionBar):
                     QUESTIONS.insert_one(self.page.content)
                     # Update QuestionTable
                     self.table.question_liststore.clear()
-                    self.table.build_table(*self.overview.load_data())
+                    self.table.build_table(*self.overview.load_data(), update=True)
             elif response == Gtk.ResponseType.NO:
                 pass
             dialog.destroy()
@@ -435,7 +436,7 @@ class QuestionControlPanel(Gtk.ActionBar):
                         )
                     # Update QuestionTable
                     self.table.question_liststore.clear()
-                    self.table.build_table(*self.overview.load_data())
+                    self.table.build_table(*self.overview.load_data(), update=True)
             elif response == Gtk.ResponseType.NO:
                 pass
             dialog.destroy()
@@ -507,7 +508,7 @@ class QuestionControlPanel(Gtk.ActionBar):
                 QUESTIONS.delete_one({'name': question_name})
                 # Update QuestionTable
                 self.table.question_liststore.clear()
-                self.table.build_table(*self.overview.load_data())
+                self.table.build_table(*self.overview.load_data(), update=True)
                 # Close question window
                 dialog.destroy()
                 self.parent_window.destroy()
