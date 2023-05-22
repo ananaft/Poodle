@@ -633,6 +633,14 @@ class GeneralQuestionGrid(Gtk.Grid):
                             self.in_exams_label,
                             Gtk.PositionType.RIGHT, 2, 1)
 
+        # Optional fields
+        # self.img_files_label = Gtk.Label(label='img_files')
+        # self.attach_next_to(self.img_files_label,
+        #                     self.in_exams_label,
+        #                     Gtk.PositionType.BOTTOM, 1, 1)
+
+        # self.img_files_field =
+
     # self.content needs to be updated when page is switched
     def update_content(self) -> dict:
 
@@ -1072,12 +1080,14 @@ class SimpleDictGrid(Gtk.Grid):
     def get_content(self) -> dict:
 
         if hasattr(self, 'add_button'):
-            child_list = self.get_children()[1:]
+            child_list = list(reversed(self.get_children()[1:]))
         else:
-            child_list = self.get_children()
+            child_list = list(reversed(self.get_children()))
         content = dict(zip(
-            reversed([x.get_text() for x in child_list][len(child_list)//2:]),
-            reversed([x.get_text() for x in child_list][:len(child_list)//2])
+            # First half is keys
+            [x.get_text() for x in child_list[:len(child_list)//2]],
+            # Second half is values
+            [x.get_text() for x in child_list[len(child_list)//2:]]
         ))
 
         return {k: self.output_type(v) for k, v in content.items()}
@@ -1118,9 +1128,11 @@ class DictListGrid(Gtk.Grid):
             entry.set_text(key)
             entry.set_editable(dict_editable)
             self.attach(entry, 0, n, 1, 1)
-            self.attach_next_to(SimpleListGrid(dict_field[key], list_editable, list_add),
-                                entry,
-                                Gtk.PositionType.RIGHT, 1, 1)
+            self.attach_next_to(
+                SimpleListGrid(dict_field[key], list_editable, list_add, output_type),
+                entry,
+                Gtk.PositionType.RIGHT, 1, 1
+            )
         
         self.output_type = output_type
         self.n_rows = len(dict_field.keys())
@@ -1153,27 +1165,27 @@ class DictListGrid(Gtk.Grid):
     def get_content(self) -> dict:
 
         if hasattr(self, 'add_button'):
-            child_list = self.get_children()[1:]
+            child_list = list(reversed(self.get_children()[1:]))
         else:
-            child_list = self.get_children()
+            child_list = list(reversed(self.get_children()))
         content = dict(zip(
-            reversed([x.get_text() for x in child_list][len(child_list)//2:]),
-            reversed([x.get_content(self.output_type) if isinstance(x, SimpleListGrid)
-                      else x.get_text() for x in child_list][:len(child_list)//2])
+            [x.get_text() for x in child_list[::2]],
+            [x.get_content() if isinstance(x, SimpleListGrid)
+             else x.get_text() for x in child_list[1::2]]
         ))
 
         return content
 
     def overwrite(self, input_dict: dict):
 
-        child_list = self.get_children()[1:]
+        child_list = list(reversed(self.get_children()[1:]))
         key_pairs = zip(
             input_dict.keys(),
-            reversed(child_list[len(child_list)//2:])
+            child_list[::2]
         )
         value_pairs = zip(
             input_dict.values(),
-            reversed(child_list[:len(child_list)//2])
+            child_list[1::2]
         )
 
         for i, j in key_pairs:
