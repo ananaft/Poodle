@@ -634,12 +634,58 @@ class GeneralQuestionGrid(Gtk.Grid):
                             Gtk.PositionType.RIGHT, 2, 1)
 
         # Optional fields
-        # self.img_files_label = Gtk.Label(label='img_files')
-        # self.attach_next_to(self.img_files_label,
-        #                     self.in_exams_label,
-        #                     Gtk.PositionType.BOTTOM, 1, 1)
+        if 'img_files' not in self.content.keys():
+            self.img_files_button = Gtk.Button(label='Add img_files')
+            self.attach_next_to(self.img_files_button,
+                                self.in_exams_label,
+                                Gtk.PositionType.BOTTOM, 1, 1)
+            self.img_files_button.connect(
+                'clicked', self.build_optional, 'img_files', ['']
+            )
+        else:
+            self.build_optional(None, 'img_files', self.content['img_files'])
 
-        # self.img_files_field =
+        if 'tables' not in self.content.keys():
+            self.tables_button = Gtk.Button(label='Add tables')
+            self.attach_next_to(self.tables_button,
+                                self.img_files_button,
+                                Gtk.PositionType.BOTTOM, 1, 1)
+            self.tables_button.connect(
+                'clicked', self.build_optional, 'tables', ['']
+            )
+        else:
+            self.build_optional(None, 'tables', self.content['tables'])
+
+    def build_optional(self, button, field: str, content):
+
+        # Will be added below last row
+        last_row = len([x for x in self.get_children() if type(x) == Gtk.Label])
+        
+        if field == 'img_files':
+            self.img_files_label = Gtk.Label(label='img_files')
+            self.attach(self.img_files_label, 0, last_row, 1, 1)
+            self.img_files_field = SimpleListGrid(content)
+            self.attach_next_to(self.img_files_field,
+                                self.img_files_label,
+                                Gtk.PositionType.RIGHT, 2, 1)
+            # Remove button from attributes and GUI
+            if button:
+                del self.img_files_button
+                button.destroy()
+
+        elif field == 'tables':
+            self.tables_label = Gtk.Label(label='tables')
+            self.attach(self.tables_label, 0, last_row, 1, 1)
+            self.tables_field = SimpleListGrid(content) ## CHANGE THIS
+            self.attach_next_to(self.tables_field,
+                                self.tables_label,
+                                Gtk.PositionType.RIGHT, 2, 1)
+            # Remove button from attributes and GUI
+            if button:
+                del self.tables_button
+                button.destroy()
+
+        self.show_all()
 
     # self.content needs to be updated when page is switched
     def update_content(self) -> dict:
