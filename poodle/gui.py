@@ -87,19 +87,18 @@ class QuestionTreeview(Gtk.TreeView):
 
         self.connect('key-press-event', self.on_key_press)
 
-    def build_table(self, data, list_store_cols, treeview_cols, update=False) -> None:
+    def build_table(self, data, list_store_cols, treeview_cols) -> None:
 
         self.question_liststore = Gtk.ListStore(*list_store_cols)
         for row in data:
             self.question_liststore.append(row)
         self.set_model(self.question_liststore)
 
-        if not update:
-            for i, column_title in enumerate(treeview_cols):
-                renderer = Gtk.CellRendererText()
-                column = Gtk.TreeViewColumn(column_title, renderer, text=i)
-                column.set_sort_column_id(i)
-                self.append_column(column)
+        for i, column_title in enumerate(treeview_cols):
+            renderer = Gtk.CellRendererText()
+            column = Gtk.TreeViewColumn(column_title, renderer, text=i)
+            column.set_sort_column_id(i)
+            self.append_column(column)
 
     # Create window for new question
     def new_question(self) -> None:
@@ -427,7 +426,9 @@ class QuestionControlPanel(Gtk.ActionBar):
                     QUESTIONS.insert_one(self.page.content)
                     # Update QuestionTreeview
                     self.table.question_liststore.clear()
-                    self.table.build_table(*self.overview.load_data(), update=True)
+                    for c in self.table.get_columns():
+                        self.table.remove_column(c)
+                    self.table.build_table(*self.overview.load_data())
             elif response == Gtk.ResponseType.NO:
                 pass
             dialog.destroy()
@@ -453,7 +454,9 @@ class QuestionControlPanel(Gtk.ActionBar):
                         )
                     # Update QuestionTreeview
                     self.table.question_liststore.clear()
-                    self.table.build_table(*self.overview.load_data(), update=True)
+                    for c in self.table.get_columns():
+                        self.table.remove_column(c)
+                    self.table.build_table(*self.overview.load_data())
             elif response == Gtk.ResponseType.NO:
                 pass
             dialog.destroy()
@@ -525,7 +528,9 @@ class QuestionControlPanel(Gtk.ActionBar):
                 QUESTIONS.delete_one({'name': question_name})
                 # Update QuestionTreeview
                 self.table.question_liststore.clear()
-                self.table.build_table(*self.overview.load_data(), update=True)
+                for c in self.table.get_columns():
+                    self.table.remove_column(c)
+                self.table.build_table(*self.overview.load_data())
                 # Close question window
                 dialog.destroy()
                 self.parent_window.destroy()
@@ -1382,7 +1387,7 @@ class DictButtonGrid(Gtk.Grid):
         button.show()
 
         self.n_rows += 1
-        self.data[key_entry.get_text()] = [[],[]]
+        self.data[key_entry.get_text()] = [[''],['']]
 
     def get_content(self) -> dict:
 
@@ -1396,6 +1401,7 @@ class TableWindow(Gtk.Window):
         super().__init__(title=table_name)
         self.set_size_request(800, 600)
         self.parent_window = parent
+        self.table_key = table_name
 
         self.grid = Gtk.Grid()
         self.grid.set_column_homogeneous(True)
@@ -1419,16 +1425,94 @@ class TableTreeView(Gtk.TreeView):
 
         super().__init__()
         self.parent_window = parent
+        self.build_table(table)
 
+    def build_table(self, table: list):
         self.liststore = Gtk.ListStore(*([str] * len(table[0])))
         for row in table[1:]:
             self.liststore.append(row)
         self.set_model(self.liststore)
 
         for i, column_title in enumerate(table[0]):
-            renderer = Gtk.CellRendererText()
+            renderer = Gtk.CellRendererText(editable=True)
+            renderer.connect('edited', self.cell_edited, self.liststore, i)
             column = Gtk.TreeViewColumn(column_title, renderer, text=i)
             self.append_column(column)
+
+    def cell_edited(self, widget, row, text, model, column):
+
+        model[row][column] = text
+
+    # use with Gtk.ListStore.foreach()
+    @staticmethod
+    def insert_rows(model, row, iterator, table):
+        table.append(model[row][:])
+
+    def save(self, button):
+
+        output_table = []
+        # Columns
+        columns = [x.get_property('title') for x in self.get_columns()]
+        output_table.append(columns)
+        # Rows
+        self.liststore.foreach(self.insert_rows, output_table)
+
+        key = self.parent_window.table_key
+        question_grid = self.parent_window.parent_window.notebook.question_grid
+        # Update data
+        question_grid.tables_field.data[key] = output_table
+
+    def edit_columns(self, button):
+
+        dialog = Gtk.MessageDialog(
+            transient_for=self.parent_window,
+            message_type=Gtk.MessageType.OTHER,
+            buttons=Gtk.ButtonsType.OK_CANCEL,
+            text='Edit columns below:'
+        )
+        # Grid of column titles
+        box = dialog.get_message_area()
+        column_titles = [x.get_title() for x in self.get_columns()]
+        column_grid = TableColumnGrid(self.parent_window, column_titles)
+        box.pack_end(column_grid, True, True, 10)
+        box.show_all()
+        response = dialog.run()
+        if response == Gtk.ResponseType.OK:
+            # Create new table
+            new_table = []
+            # Columns
+            new_table.append(
+                list(reversed(
+                    [x.get_text() for x in column_grid.get_children()
+                     if type(x) == Gtk.Entry]
+                     ))
+                )
+            # Rows
+            self.liststore.foreach(self.insert_rows, new_table)
+            # Fill in potentially missing values due to added columns
+            max_cols = max([len(x) for x in new_table])
+            new_table = [x + [''] * (max_cols - len(x)) for x in new_table]
+            # Remove old table from parent window and rebuild
+            self.parent_window.scroll_window.remove(self)
+            for c in self.get_columns():
+                self.remove_column(c)
+            self.build_table(new_table)
+            self.parent_window.scroll_window.add(self)
+        elif response == Gtk.ResponseType.CANCEL:
+            pass
+        dialog.destroy()
+
+    def add_row(self, button):
+
+        columns = self.liststore.get_n_columns()
+        self.liststore.append([''] * columns)
+
+    def remove_row(self, button):
+
+        n_rows = self.liststore.iter_n_children()
+        if n_rows > 1:
+            last_row = self.liststore.get_iter(n_rows-1)
+            self.liststore.remove(last_row)
 
 
 class TableControlPanel(Gtk.ActionBar):
@@ -1440,8 +1524,61 @@ class TableControlPanel(Gtk.ActionBar):
         self.table = self.parent_window.table
 
         self.save_button = Gtk.Button(label='Save')
-        # self.save_button.connect('clicked', ) ## where should save function be
+        self.save_button.connect('clicked', self.table.save)
         self.pack_start(self.save_button)
+
+        self.remove_row_button = Gtk.Button(label='Remove row')
+        self.remove_row_button.connect('clicked', self.table.remove_row)
+        self.pack_end(self.remove_row_button)
+
+        self.add_row_button = Gtk.Button(label='Add row')
+        self.add_row_button.connect('clicked', self.table.add_row)
+        self.pack_end(self.add_row_button)
+
+        self.edit_columns_button = Gtk.Button(label='Edit columns')
+        self.edit_columns_button.connect('clicked', self.table.edit_columns)
+        self.pack_end(self.edit_columns_button)
+
+
+class TableColumnGrid(Gtk.Grid):
+
+    def __init__(self, parent, column_titles: list):
+
+        super().__init__()
+        self.parent_window = parent
+        self.n_rows = 0
+
+        # Fill grid
+        for i in column_titles:
+            entry = Gtk.Entry()
+            entry.set_hexpand(True)
+            entry.set_text(i)
+            self.attach(entry, 0, self.n_rows, 2, 1)
+            self.n_rows += 1
+
+        self.add_button = Gtk.Button(label='+')
+        self.add_button.connect('clicked', self.add_row)
+        self.attach(self.add_button, 0, self.n_rows, 1, 1)
+
+        self.remove_button = Gtk.Button(label='-')
+        self.remove_button.connect('clicked', self.remove_row)
+        self.attach(self.remove_button, 1, self.n_rows, 1, 1)
+
+    def add_row(self, button):
+
+        entry = Gtk.Entry()
+        entry.set_hexpand(True)
+        self.insert_row(self.n_rows)
+        self.attach(entry, 0, self.n_rows, 2, 1)
+        self.show_all()
+        self.n_rows += 1
+
+    def remove_row(self, button):
+
+        if self.n_rows > 1:
+            child = self.get_child_at(0, self.n_rows - 1)
+            self.remove(child)
+            self.n_rows -= 1
 
 
 class RawQuestionText(Gtk.TextView):
