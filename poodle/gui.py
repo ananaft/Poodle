@@ -682,6 +682,7 @@ class GeneralQuestionGrid(Gtk.Grid):
             self.attach(self.img_files_label, 0, self.grid_rows, 1, 1)
             self.grid_rows += 1
             self.img_files_field = SimpleListGrid(content)
+            self.img_files_field.set_property('name', 'img_files')
             self.attach_next_to(self.img_files_field,
                                 self.img_files_label,
                                 Gtk.PositionType.RIGHT, 2, 1)
@@ -699,6 +700,7 @@ class GeneralQuestionGrid(Gtk.Grid):
             self.tables_field = DictButtonGrid(
                 self, 'Show/edit', self.show_table, (), content, False, 'tbl'
             )
+            self.tables_field.set_property('name', 'tables')
             self.attach_next_to(self.tables_field,
                                 self.tables_label,
                                 Gtk.PositionType.RIGHT, 2, 1)
@@ -794,6 +796,8 @@ class GeneralQuestionGrid(Gtk.Grid):
                 case SimpleDictGrid.__name__:
                     child.overwrite(v)
                 case DictListGrid.__name__:
+                    child.overwrite(v)
+                case DictButtonGrid.__name__:
                     child.overwrite(v)
                 case str.__name__:
                     pass
@@ -1393,6 +1397,15 @@ class DictButtonGrid(Gtk.Grid):
 
         return self.data
 
+    def overwrite(self, input_dict: dict):
+
+        self.data = input_dict
+        # Reconnect buttons to updated self.data
+        for c in self.get_children():
+            if type(c) == Gtk.Button and c.get_property('label') != '+':
+                c.disconnect_by_func(self.fn)
+                c.connect('clicked', self.fn, self, self.data)
+
 
 class TableWindow(Gtk.Window):
 
@@ -1427,6 +1440,8 @@ class TableTreeView(Gtk.TreeView):
         self.parent_window = parent
         self.build_table(table)
 
+        self.connect('key-press-event', self.on_key_press)
+
     def build_table(self, table: list):
         self.liststore = Gtk.ListStore(*([str] * len(table[0])))
         for row in table[1:]:
@@ -1448,7 +1463,7 @@ class TableTreeView(Gtk.TreeView):
     def insert_rows(model, row, iterator, table):
         table.append(model[row][:])
 
-    def save(self, button):
+    def save_table(self, button):
 
         output_table = []
         # Columns
@@ -1458,9 +1473,12 @@ class TableTreeView(Gtk.TreeView):
         self.liststore.foreach(self.insert_rows, output_table)
 
         key = self.parent_window.table_key
-        question_grid = self.parent_window.parent_window.notebook.question_grid
+        notebook = self.parent_window.parent_window.notebook
+        question_grid = notebook.question_grid
         # Update data
         question_grid.tables_field.data[key] = output_table
+        # Ask whether entire question should be saved
+        self.parent_window.parent_window.control.on_save_clicked(button)
 
     def edit_columns(self, button):
 
@@ -1514,6 +1532,19 @@ class TableTreeView(Gtk.TreeView):
             last_row = self.liststore.get_iter(n_rows-1)
             self.liststore.remove(last_row)
 
+    # Keyboard shortcuts
+    def on_key_press(self, treeview, event):
+
+        key_name = Gdk.keyval_name(event.keyval)
+
+        match key_name:
+            case 'e':
+                self.edit_columns(None)
+            case 'a':
+                self.add_row(None)
+            case 'r':
+                self.remove_row(None)
+
 
 class TableControlPanel(Gtk.ActionBar):
 
@@ -1524,7 +1555,7 @@ class TableControlPanel(Gtk.ActionBar):
         self.table = self.parent_window.table
 
         self.save_button = Gtk.Button(label='Save')
-        self.save_button.connect('clicked', self.table.save)
+        self.save_button.connect('clicked', self.table.save_table)
         self.pack_start(self.save_button)
 
         self.remove_row_button = Gtk.Button(label='Remove row')
