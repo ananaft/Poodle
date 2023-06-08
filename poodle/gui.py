@@ -8,6 +8,8 @@ import numpy as np
 import json
 import time
 import threading
+import ast
+import re
 import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk
@@ -1089,6 +1091,21 @@ class CalculatedQuestionGrid(GeneralQuestionGrid):
         # Optional question fields
         self.check_optional()
 
+        # Connection to variable creation file
+        self.file_button = Gtk.Button(label='Edit variable creation')
+        self.file_button.connect('clicked', self.edit_var_file)
+        self.attach(self.file_button, 0, self.grid_rows, 1, 1)
+        self.grid_rows += 1
+
+    def edit_var_file(self, button):
+
+        new_window = VariableFileWindow(
+            self.parent_window,
+            self.content['name'],
+            self.vars_field.get_content()
+        )
+        new_window.show_all()
+
 
 class SimpleListGrid(Gtk.Grid):
 
@@ -1612,6 +1629,134 @@ class TableColumnGrid(Gtk.Grid):
             self.n_rows -= 1
 
 
+class VariableFileWindow(Gtk.Window):
+
+    def __init__(self, parent, question_name: str, variables: list):
+
+        super().__init__(title=question_name)
+        self.set_size_request(800, 600)
+        self.parent_window = parent
+        self.question_name = question_name
+        self.variables = variables
+
+        self.grid = Gtk.Grid()
+        self.grid.set_column_homogeneous(True)
+        self.add(self.grid)
+
+        self.scroll_window = Gtk.ScrolledWindow()
+        self.scroll_window.set_vexpand(True)
+        self.textview = Gtk.TextView(wrap_mode=Gtk.WrapMode(3))
+        self.textview.textbuffer = self.textview.get_buffer()
+        self.scroll_window.add(self.textview)
+
+        self.control = VariableControlPanel(self)
+        self.control.load_file()
+
+        self.grid.attach(self.scroll_window, 0, 0, 1, 1)
+        self.grid.attach_next_to(self.control, self.scroll_window,
+                                 Gtk.PositionType.BOTTOM, 1, 1)
+
+
+class VariableControlPanel(Gtk.ActionBar):
+
+    def __init__(self, parent):
+
+        super().__init__()
+        self.parent_window = parent
+        self.textview = self.parent_window.textview
+        self.path = (
+            f'{BASE_PATH}/databases/{DB.name}/random_vars/' +
+            f'rv_{self.parent_window.question_name}.py'
+        )
+
+        self.save_button = Gtk.Button(label='Save')
+        self.save_button.connect('clicked', self.save_file)
+        self.pack_start(self.save_button)
+
+        self.check_button = Gtk.Button(label='Check code')
+        self.check_button.connect('clicked', self.parse_file, False)
+        self.pack_end(self.check_button)
+
+    def load_file(self):
+
+        try:
+            with open(self.path, 'r') as rf:
+                text = rf.read()
+                self.textview.textbuffer.set_text(text)
+        except FileNotFoundError:
+            # Get vars from question
+            variables = self.parent_window.variables
+            # Create template
+            template = (
+                'from config import RANDOM_ARR_SIZE\n\n' +
+                'import numpy as np\n' +
+                ' = \n'.join(variables) + ' = '
+            )
+            self.textview.textbuffer.set_text(template)
+
+    def save_file(self, button):
+
+        # Check syntax before saving
+        code = self.textview.textbuffer.get_text(
+            self.textview.textbuffer.get_start_iter(),
+            self.textview.textbuffer.get_end_iter(),
+            include_hidden_chars=True
+        )
+        passed = self.parse_file(button)
+        # Write to file if code passed syntax check
+        if passed:
+            with open(self.path, 'w') as wf:
+                wf.write(code)
+            dialog = Gtk.MessageDialog(
+                transient_for=self.parent_window,
+                message_type=Gtk.MessageType.INFO,
+                buttons=Gtk.ButtonsType.OK,
+                text='File successfully saved.'
+            )
+            dialog.run()
+            dialog.destroy()
+
+    def parse_file(self, button, silent: bool = True) -> bool:
+
+        # Passing this check does not guarantee working code!
+        code = self.textview.textbuffer.get_text(
+            self.textview.textbuffer.get_start_iter(),
+            self.textview.textbuffer.get_end_iter(),
+            include_hidden_chars=True
+        )
+        # Run check
+        try:
+            ast.parse(code)
+        except SyntaxError as e:
+            line_number = re.search(r'\d+(?=\))', str(e)).group(0)
+            dialog = Gtk.MessageDialog(
+                transient_for=self.parent_window,
+                message_type=Gtk.MessageType.WARNING,
+                buttons=Gtk.ButtonsType.OK,
+                text=f'Syntax error found at line {line_number}!'
+            )
+            dialog.run()
+            dialog.destroy()
+
+            return False
+
+        # Display success message
+        if not silent:
+            dialog = Gtk.MessageDialog(
+                transient_for=self.parent_window,
+                message_type=Gtk.MessageType.INFO,
+                buttons=Gtk.ButtonsType.OK,
+                text='Syntax check successfully passed.'
+            )
+            dialog.format_secondary_text(
+                '(This does not guarantee succesful compilation!)'
+            )
+            dialog.run()
+            dialog.destroy()
+
+        return True
+
+
 class RawQuestionText(Gtk.TextView):
 
     def __init__(self, question_content: dict):
@@ -1748,7 +1893,7 @@ class ExamWindow(Gtk.Window):
                 transient_for=self.parent_window,
                 message_type=Gtk.MessageType.INFO,
                 buttons=Gtk.ButtonsType.OK,
-                text=('Marked questions could not be found in database!')
+                text='Marked questions could not be found in database!'
             )
             dialog.run()
             dialog.destroy()
