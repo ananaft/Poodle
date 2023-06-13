@@ -21,7 +21,7 @@ class Overview(Gtk.Window):
     def __init__(self):
 
         super().__init__(title='Overview')
-        self.set_size_request(800, 600)
+        self.set_size_request(1350, 900)
         self.connect('destroy', Gtk.main_quit)
 
         self.grid = Gtk.Grid()
@@ -32,7 +32,6 @@ class Overview(Gtk.Window):
         self.scroll_window.set_vexpand(True)
         self.table = QuestionTreeview(self)
         self.scroll_window.add(self.table)
-
         self.control = OverviewControlPanel(self)
 
         self.grid.attach(self.scroll_window, 0, 0, 1, 1)
@@ -73,7 +72,7 @@ class Overview(Gtk.Window):
 
         data = row_to_list(df)
         column_types = [numpy_to_native(x.type) for x in list(df.dtypes)]
-        column_names = ['question', 'appearances', 'difficulty', 'time_est'] + list(df.columns)[4:]
+        column_names = ['question', 'appearances', 'difficulty', 'time__est'] + list(df.columns)[4:]
 
         return data, column_types, column_names
 
@@ -94,12 +93,15 @@ class QuestionTreeview(Gtk.TreeView):
         self.question_liststore = Gtk.ListStore(*list_store_cols)
         for row in data:
             self.question_liststore.append(row)
-        self.set_model(self.question_liststore)
+        # Create filter
+        self.filter = self.question_liststore.filter_new()
+        self.filter.set_visible_func(self.filter_questions)
+        # Set filter as model for treeview
+        self.set_model(self.filter)
 
         for i, column_title in enumerate(treeview_cols):
             renderer = Gtk.CellRendererText()
             column = Gtk.TreeViewColumn(column_title, renderer, text=i)
-            column.set_sort_column_id(i)
             self.append_column(column)
 
     # Create window for new question
@@ -163,7 +165,7 @@ class QuestionTreeview(Gtk.TreeView):
             pass
         dialog.destroy()
 
-    # Show existing question
+    # Show selected question in new window
     def view_question(self) -> None:
 
         selected_row = self.get_selection()
@@ -213,6 +215,55 @@ class QuestionTreeview(Gtk.TreeView):
 
         self.parent_window.exam_window.add_question(question_name)
 
+    # Filter questions based on search defined in control panel
+    def filter_questions(self, model, iterator, data):
+
+        try:
+            search = self.parent_window.control.search_entry.get_text()
+            field = self.parent_window.control.fields_combo.get_active_text()
+        # Control panel doesn't exist when treeview is initialized
+        except AttributeError:
+            search = None
+            field = None
+
+        # Apply different filters depending on field choice
+        if search is None and field is None:
+            return True
+        elif search == '':
+            return True
+        elif field == 'name':
+            return bool(re.search(search, model[iterator][0]))
+        elif (
+            field == 'question' or
+            field == 'moodle_type' or
+            field == 'family_type'
+        ):
+            question = QUESTIONS.find_one({'name': model[iterator][0]})
+            return bool(re.search(search, question[field]))
+        elif field == 'appearances':
+            # Check for allowed math expressions
+            is_expression = bool(re.match(r'\s*([<>]=?|\!=)\s*\d+\.?\d*\s*$', search))
+            if is_expression:
+                return eval(str(model[iterator][1]) + search)
+            else:
+                return str(model[iterator][1]) == search
+        elif field == 'difficulty':
+            # Check for allowed math expressions
+            is_expression = bool(re.match(r'\s*([<>]=?|\!=)\s*\d+\.?\d*\s*$', search))
+            if is_expression:
+                return eval(str(model[iterator][2]) + search)
+            else:
+                return str(model[iterator][2]) == search
+        elif field == 'time_est':
+            # Check for allowed math expressions
+            is_expression = bool(re.match(r'\s*([<>]=?|\!=)\s*\d+\.?\d*\s*$', search))
+            if is_expression:
+                return eval(str(model[iterator][3]) + search)
+            else:
+                return str(model[iterator][3]) == search
+        else:
+            return True
+
     # Handle button presses
     def on_button_press(self, button) -> None:
 
@@ -225,6 +276,8 @@ class QuestionTreeview(Gtk.TreeView):
                 self.view_question()
             case 'Add to exam':
                 self.add_to_exam()
+            case 'Filter':
+                self.filter.refilter()
 
     # Handle key presses
     def on_key_press(self, treeview, event) -> None:
@@ -240,6 +293,8 @@ class QuestionTreeview(Gtk.TreeView):
                 self.new_question()
             case 'a':
                 self.add_to_exam()
+            case 'f':
+                self.filter.refilter()
 
 
 class OverviewControlPanel(Gtk.ActionBar):
@@ -264,13 +319,18 @@ class OverviewControlPanel(Gtk.ActionBar):
 
         # Filter functionality
         self.filter_button = Gtk.Button(label='Filter')
+        self.filter_button.connect('clicked', self.table.on_button_press)
         self.pack_end(self.filter_button)
 
         question_fields = [
             'name',
             'question',
-            'correct_answers'
-        ] ## CHANGE TO DYNAMIC (maybe global var [maybe in config.json])
+            'moodle_type',
+            'family_type',
+            'appearances',
+            'difficulty',
+            'time_est'
+        ]
         self.fields_combo = Gtk.ComboBoxText()
         for f in question_fields:
             self.fields_combo.append_text(f)
@@ -286,7 +346,7 @@ class QuestionWindow(Gtk.Window):
     def __init__(self, parent, question_content: dict):
 
         super().__init__(title=question_content['name'])
-        self.set_size_request(600, 400)
+        self.set_size_request(1200, 800)
         self.parent_window = parent
 
         self.grid = Gtk.Grid()
@@ -1688,8 +1748,8 @@ class VariableControlPanel(Gtk.ActionBar):
             variables = self.parent_window.variables
             # Create template
             template = (
-                'from config import RANDOM_ARR_SIZE\n\n' +
-                'import numpy as np\n' +
+                'from config import RANDOM_ARR_SIZE\n' +
+                'import numpy as np\n\n' +
                 ' = \n'.join(variables) + ' = '
             )
             self.textview.textbuffer.set_text(template)
