@@ -1,4 +1,5 @@
 from config import *
+import gui.windows
 
 from pprint import pprint
 import re
@@ -9,6 +10,9 @@ from tkinter import ttk
 from tkinter.font import Font
 import threading
 import pyperclip
+import gi
+gi.require_version('Gtk', '3.0')
+from gi.repository import Gtk
 
 
 def view(collection, search=None, field='name'):
@@ -224,6 +228,21 @@ def overview(candidates=None):
     # Start GUI
     overview = threading.Thread(target=OverviewThread)
     overview.start()
+
+
+def gtk_overview() -> None:
+    """
+    Dependencies: threading, gui.windows, Gtk
+    """
+
+    def run_overview() -> None:
+        win = gui.windows.Overview()
+        win.show_all()
+        Gtk.main()
+
+    thread = threading.Thread(target=run_overview)
+    thread.daemon = True
+    thread.start()
 
 
 def export_overview(path=BASE_PATH, filename='overview', candidates=None):
