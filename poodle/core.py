@@ -20,12 +20,12 @@ def backup(db=DB.name) -> None:
     Dependencies: config, time, os
     """
     backup_time = time.strftime('%Y-%m-%d_%H-%M-%S', time.localtime())
-    os.mkdir(BASE_PATH + f'/databases/{db}/backup/{backup_time}')
-    with open(BASE_PATH + f'/databases/{db}/backup/{backup_time}/timestamp', 'w') as wf:
+    os.mkdir(f'{BASE_PATH}/databases/{db}/backup/{backup_time}')
+    with open(f'{BASE_PATH}/databases/{db}/backup/{backup_time}/timestamp', 'w') as wf:
         wf.write(str(time.time()))
     if platform.system() == 'Linux':
         subprocess.run(["mongodump", f"--db={db}",
-                        f"--out=backup/{backup_time}"])
+                        f"--out={BASE_PATH}/databases/{db}/backup/{backup_time}"])
 
 
 def restore(path=None, db=DB.name) -> None:
