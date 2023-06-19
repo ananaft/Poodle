@@ -5,11 +5,13 @@ from gi.repository import Gtk, Gdk
 # Poodle modules
 from poodle import config
 import gui.windows
+# Other modules
+import re
 
 
 class QuestionTreeview(Gtk.TreeView):
     """
-    Dependencies: Gtk, Gdk, config, gui.windows
+    Dependencies: Gtk, Gdk, config, gui.windows, re
     """
 
     def __init__(self, parent):
@@ -133,7 +135,7 @@ class QuestionTreeview(Gtk.TreeView):
             response = dialog.run()
             if response == Gtk.ResponseType.OK:
                 exam_name = name_entry.get_text()
-                self.parent_window.exam_window = ExamWindow(
+                self.parent_window.exam_window = gui.windows.ExamWindow(
                     self.parent_window, exam_name
                 )
                 self.parent_window.exam_window.show_all()

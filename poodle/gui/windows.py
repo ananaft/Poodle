@@ -1,9 +1,11 @@
 # Gtk modules
 import gi
 gi.require_version('Gtk', '3.0')
-from gi.repository import Gtk
+gi.require_version('WebKit2', '4.1')
+from gi.repository import Gtk, WebKit2
 # Poodle modules
 from poodle import config
+from poodle import exam
 import gui.treeviews
 import gui.panels
 import gui.notebooks
@@ -164,7 +166,7 @@ class VariableFileWindow(Gtk.Window):
 
 class ExamWindow(Gtk.Window):
     """
-    Dependencies: Gtk, gui.panels, config
+    Dependencies: Gtk, gui.panels, config, exam
     """
 
     def __init__(self, parent, exam_name: str):
@@ -280,7 +282,7 @@ class ExamWindow(Gtk.Window):
             lambda x: (x.get_property('name') == 'time'),
             self.right_grid.get_children()
         ))[0]
-        time_est = sum([QUESTIONS.find_one({'name': q})['time_est']
+        time_est = sum([config.QUESTIONS.find_one({'name': q})['time_est']
                         for q in question_list])
         time_value.set_label(str(time_est))
         # Calculate average difficulty
@@ -323,7 +325,7 @@ class ExamWindow(Gtk.Window):
         )
         response = dialog.run()
         if response == Gtk.ResponseType.YES:
-            create_exam(self.get_property('title'), mode='gui',
+            exam.create_exam(self.get_property('title'), mode='gui',
                         questions=question_list)
             dialog.destroy()
             self.destroy()
@@ -332,3 +334,26 @@ class ExamWindow(Gtk.Window):
 
     def remove_parent_attribute(self, window):
         delattr(self.parent_window, 'exam_window')
+
+
+class HTMLPreviewWindow(Gtk.Window):
+    """
+    Dependencies: Gtk, WebKit2
+    """
+
+    def __init__(self, parent, content):
+
+        super().__init__(title='HTML Preview')
+        self.set_size_request(1050, 700)
+        self.parent_window = parent
+        self.content = content
+
+        self.webview = WebKit2.WebView()
+        self.add(self.webview)
+        self.connect('destroy', self.close_webview)
+
+        self.webview.load_html(content, None)
+
+    def close_webview(self, widget):
+
+        self.webview.terminate_web_process()

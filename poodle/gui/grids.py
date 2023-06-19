@@ -123,6 +123,19 @@ class GeneralQuestionGrid(Gtk.Grid):
                             self.in_exams_label,
                             Gtk.PositionType.RIGHT, 2, 1)
 
+
+    def preview_html(self, button):
+
+        content = self.question_buffer.get_text(
+            self.question_buffer.get_start_iter(),
+            self.question_buffer.get_end_iter(),
+            include_hidden_chars=True
+        )
+
+        new_window = gui.windows.HTMLPreviewWindow(self, content)
+        new_window.show_all()
+
+
     # will be called by sub-classes
     def check_optional(self):
 
@@ -288,8 +301,14 @@ class MultiChoiceQuestionGrid(GeneralQuestionGrid):
 
         self.insert_row(3)
         self.grid_rows += 1
+        self.preview_button = Gtk.Button(label='Preview HTML')
+        self.attach(self.preview_button, 0, 3, 1, 1)
+        self.preview_button.connect('clicked', self.preview_html)
+
+        self.insert_row(4)
+        self.grid_rows += 1
         self.correct_answers_label = Gtk.Label(label='correct_answers')
-        self.attach(self.correct_answers_label, 0, 3, 1, 1)
+        self.attach(self.correct_answers_label, 0, 4, 1, 1)
         self.correct_answers_field = SimpleListGrid(
             self.content['correct_answers']
         )
@@ -298,10 +317,10 @@ class MultiChoiceQuestionGrid(GeneralQuestionGrid):
                             self.correct_answers_label,
                             Gtk.PositionType.RIGHT, 2, 1)
 
-        self.insert_row(4)
+        self.insert_row(5)
         self.grid_rows += 1
         self.false_answers_label = Gtk.Label(label='false_answers')
-        self.attach(self.false_answers_label, 0, 4, 1, 1)
+        self.attach(self.false_answers_label, 0, 5, 1, 1)
         self.false_answers_field = SimpleListGrid(
             self.content['false_answers']
         )
@@ -310,10 +329,10 @@ class MultiChoiceQuestionGrid(GeneralQuestionGrid):
                             self.false_answers_label,
                             Gtk.PositionType.RIGHT, 2, 1)
 
-        self.insert_row(5)
+        self.insert_row(6)
         self.grid_rows += 1
         self.single_label = Gtk.Label(label='single')
-        self.attach(self.single_label, 0, 5, 1, 1)
+        self.attach(self.single_label, 0, 6, 1, 1)
         self.single_field = Gtk.Entry()
         self.single_field.set_property('name', 'single')
         self.single_field.set_hexpand(True)
@@ -337,8 +356,14 @@ class NumericalQuestionGrid(GeneralQuestionGrid):
 
         self.insert_row(3)
         self.grid_rows += 1
+        self.preview_button = Gtk.Button(label='Preview HTML')
+        self.attach(self.preview_button, 0, 3, 1, 1)
+        self.preview_button.connect('clicked', self.preview_html)
+
+        self.insert_row(4)
+        self.grid_rows += 1
         self.correct_answers_label = Gtk.Label(label='correct_answers')
-        self.attach(self.correct_answers_label, 0, 3, 1, 1)
+        self.attach(self.correct_answers_label, 0, 4, 1, 1)
         self.correct_answers_field = SimpleListGrid(
             self.content['correct_answers'], add=False, output_type=float
         )
@@ -347,10 +372,10 @@ class NumericalQuestionGrid(GeneralQuestionGrid):
                             self.correct_answers_label,
                             Gtk.PositionType.RIGHT, 2, 1)
 
-        self.insert_row(4)
+        self.insert_row(5)
         self.grid_rows += 1
         self.tolerance_label = Gtk.Label(label='tolerance')
-        self.attach(self.tolerance_label, 0, 4, 1, 1)
+        self.attach(self.tolerance_label, 0, 5, 1, 1)
         self.tolerance_field = Gtk.Entry()
         self.tolerance_field.set_property('name', 'tolerance')
         self.tolerance_field.set_hexpand(True)
@@ -374,8 +399,14 @@ class ShortanswerQuestionGrid(GeneralQuestionGrid):
 
         self.insert_row(3)
         self.grid_rows += 1
+        self.preview_button = Gtk.Button(label='Preview HTML')
+        self.attach(self.preview_button, 0, 3, 1, 1)
+        self.preview_button.connect('clicked', self.preview_html)
+
+        self.insert_row(4)
+        self.grid_rows += 1
         self.correct_answers_label = Gtk.Label(label='correct_answers')
-        self.attach(self.correct_answers_label, 0, 3, 1, 1)
+        self.attach(self.correct_answers_label, 0, 4, 1, 1)
         self.correct_answers_field = SimpleListGrid(
             self.content['correct_answers']
         )
@@ -384,10 +415,10 @@ class ShortanswerQuestionGrid(GeneralQuestionGrid):
                             self.correct_answers_label,
                             Gtk.PositionType.RIGHT, 2, 1)
 
-        self.insert_row(4)
+        self.insert_row(5)
         self.grid_rows += 1
         self.usecase_label = Gtk.Label(label='usecase')
-        self.attach(self.usecase_label, 0, 4, 1, 1)
+        self.attach(self.usecase_label, 0, 5, 1, 1)
         self.usecase_field = Gtk.Entry()
         self.usecase_field.set_property('name', 'usecase')
         self.usecase_field.set_hexpand(True)
@@ -411,8 +442,14 @@ class EssayQuestionGrid(GeneralQuestionGrid):
 
         self.insert_row(3)
         self.grid_rows += 1
+        self.preview_button = Gtk.Button(label='Preview HTML')
+        self.attach(self.preview_button, 0, 3, 1, 1)
+        self.preview_button.connect('clicked', self.preview_html)
+
+        self.insert_row(4)
+        self.grid_rows += 1
         self.answer_files_label = Gtk.Label(label='answer_files')
-        self.attach(self.answer_files_label, 0, 3, 1, 1)
+        self.attach(self.answer_files_label, 0, 4, 1, 1)
         self.answer_files_field = SimpleListGrid(
             self.content['answer_files'], add=False, output_type=int
         )
@@ -436,8 +473,14 @@ class MatchingQuestionGrid(GeneralQuestionGrid):
 
         self.insert_row(3)
         self.grid_rows += 1
+        self.preview_button = Gtk.Button(label='Preview HTML')
+        self.attach(self.preview_button, 0, 3, 1, 1)
+        self.preview_button.connect('clicked', self.preview_html)
+
+        self.insert_row(4)
+        self.grid_rows += 1
         self.correct_answers_label = Gtk.Label(label='correct_answers')
-        self.attach(self.correct_answers_label, 0, 3, 1, 1)
+        self.attach(self.correct_answers_label, 0, 4, 1, 1)
         self.correct_answers_field = SimpleDictGrid(
             self.content['correct_answers']
         )
@@ -446,10 +489,10 @@ class MatchingQuestionGrid(GeneralQuestionGrid):
                             self.correct_answers_label,
                             Gtk.PositionType.RIGHT, 2, 1)
 
-        self.insert_row(4)
+        self.insert_row(5)
         self.grid_rows += 1
         self.false_answers_label = Gtk.Label(label='false_answers')
-        self.attach(self.false_answers_label, 0, 4, 1, 1)
+        self.attach(self.false_answers_label, 0, 5, 1, 1)
         self.false_answers_field = SimpleListGrid(
             self.content['false_answers']
         )
@@ -473,8 +516,14 @@ class GapselectQuestionGrid(GeneralQuestionGrid):
 
         self.insert_row(3)
         self.grid_rows += 1
+        self.preview_button = Gtk.Button(label='Preview HTML')
+        self.attach(self.preview_button, 0, 3, 1, 1)
+        self.preview_button.connect('clicked', self.preview_html)
+
+        self.insert_row(4)
+        self.grid_rows += 1
         self.correct_answers_label = Gtk.Label(label='correct_answers')
-        self.attach(self.correct_answers_label, 0, 3, 1, 1)
+        self.attach(self.correct_answers_label, 0, 4, 1, 1)
         self.correct_answers_field = DictListGrid(
             self.content['correct_answers']
         )
@@ -483,10 +532,10 @@ class GapselectQuestionGrid(GeneralQuestionGrid):
                             self.correct_answers_label,
                             Gtk.PositionType.RIGHT, 2, 1)
 
-        self.insert_row(4)
+        self.insert_row(5)
         self.grid_rows += 1
         self.false_answers_label = Gtk.Label(label='false_answers')
-        self.attach(self.false_answers_label, 0, 4, 1, 1)
+        self.attach(self.false_answers_label, 0, 5, 1, 1)
         self.false_answers_field = DictListGrid(
             self.content['false_answers']
         )
@@ -510,8 +559,14 @@ class DDImageOrTextQuestionGrid(GeneralQuestionGrid):
 
         self.insert_row(3)
         self.grid_rows += 1
+        self.preview_button = Gtk.Button(label='Preview HTML')
+        self.attach(self.preview_button, 0, 3, 1, 1)
+        self.preview_button.connect('clicked', self.preview_html)
+
+        self.insert_row(4)
+        self.grid_rows += 1
         self.correct_answers_label = Gtk.Label(label='correct_answers')
-        self.attach(self.correct_answers_label, 0, 3, 1, 1)
+        self.attach(self.correct_answers_label, 0, 4, 1, 1)
         self.correct_answers_field = SimpleListGrid(
             self.content['correct_answers']
         )
@@ -520,10 +575,10 @@ class DDImageOrTextQuestionGrid(GeneralQuestionGrid):
                             self.correct_answers_label,
                             Gtk.PositionType.RIGHT, 2, 1)
 
-        self.insert_row(4)
+        self.insert_row(5)
         self.grid_rows += 1
         self.drops_label = Gtk.Label(label='drops')
-        self.attach(self.drops_label, 0, 4, 1, 1)
+        self.attach(self.drops_label, 0, 5, 1, 1)
         self.drops_field = DictListGrid(
             self.content['drops'], list_add=False, new_list_length=2,
             output_type=int
@@ -548,8 +603,14 @@ class CalculatedQuestionGrid(GeneralQuestionGrid):
 
         self.insert_row(3)
         self.grid_rows += 1
+        self.preview_button = Gtk.Button(label='Preview HTML')
+        self.attach(self.preview_button, 0, 3, 1, 1)
+        self.preview_button.connect('clicked', self.preview_html)
+
+        self.insert_row(4)
+        self.grid_rows += 1
         self.correct_answers_label = Gtk.Label(label='correct_answers')
-        self.attach(self.correct_answers_label, 0, 3, 1, 1)
+        self.attach(self.correct_answers_label, 0, 4, 1, 1)
         self.correct_answers_field = SimpleListGrid(
             self.content['correct_answers'], add=False
         )
@@ -558,10 +619,10 @@ class CalculatedQuestionGrid(GeneralQuestionGrid):
                             self.correct_answers_label,
                             Gtk.PositionType.RIGHT, 2, 1)
 
-        self.insert_row(4)
+        self.insert_row(5)
         self.grid_rows += 1
         self.vars_label = Gtk.Label(label='vars')
-        self.attach(self.vars_label, 0, 4, 1, 1)
+        self.attach(self.vars_label, 0, 5, 1, 1)
         self.vars_field = SimpleListGrid(
             self.content['vars']
         )
@@ -570,10 +631,10 @@ class CalculatedQuestionGrid(GeneralQuestionGrid):
                             self.vars_label,
                             Gtk.PositionType.RIGHT, 2, 1)
 
-        self.insert_row(5)
+        self.insert_row(6)
         self.grid_rows += 1
         self.tolerance_label = Gtk.Label(label='tolerance')
-        self.attach(self.tolerance_label, 0, 5, 1, 1)
+        self.attach(self.tolerance_label, 0, 6, 1, 1)
         self.tolerance_field = SimpleListGrid(
             self.content['tolerance'], add=False, output_type=[float, str, int]
         )
