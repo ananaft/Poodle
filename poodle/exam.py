@@ -6,8 +6,7 @@ import re
 from PIL import Image
 import numpy as np
 import json
-import warnings
-import copy
+
 
 def create_exam(exam, filename='import.xml', mode='terminal', questions=None):
     """
@@ -115,7 +114,7 @@ def remove_exam(exam):
 
 def evaluate_exam(exam_name, stats_file, ratings_file):
     """
-    This function will evaluate the JSON files which are exported from examUP
+    This function will evaluate the JSON files which are exported from Moodle
     within the categories 'Statistik' and 'Bewertung'. The evaluated information
     regarding individual questions' and the exam's average score will be passed
     to the database.
@@ -130,7 +129,7 @@ def evaluate_exam(exam_name, stats_file, ratings_file):
       Path of the JSON file exported from 'Bewertung'.
 
     ------------------------
-    Dependencies: json, numpy, warnings, copy
+    Dependencies: json, numpy
     """
 
     # Check for correct exam name
@@ -141,67 +140,56 @@ def evaluate_exam(exam_name, stats_file, ratings_file):
             pass
         else:
             return 'Evaluation aborted.'
+
     # Read stats_file for question names
-    rf = open(stats_file)
-    stats_list = json.load(rf)
-    rf.close()
-    # Remove "clones" of rvar questions
-    stats_list = [
-        q for q in stats_list[1] if type(q[0]) == int
-    ]
-    name_list = [
-        q[2] for q in stats_list
-    ]
+    with open(stats_file, 'r') as rf:
+        stats = json.load(rf)
+    # Check again for correct exam name
+    assert stats[0][0]['test-name'] == exam_name, \
+        f'Exam name in stats file is not {exam_name}!'
+    name_pairs = {}
+    for q in stats[1]:
+        # Ignore "clones" from rvar questions
+        if '.' not in q['f']:
+            # Check question in database
+            question = QUESTIONS.find_one({'name': q['titelderfrage']})
+            if question:
+                moodle_name = 'f' + q['f'] + str(question['points'] * 100)
+                name_pairs[moodle_name] = [q['titelderfrage'], question['points']]
+            else:
+                print(f'{q["titelderfrage"]} not in database. ' +
+                      'Ignoring question for evaluation.')
+
     # Read ratings_file for exam and question scores
-    rf = open(ratings_file)
-    ratings_list = json.load(rf)
-    rf.close()
-    # Reverse each student element and keep only question and exam scores
-    scores_list = [list(reversed(ratings_list[0][s])) for s in range(len(ratings_list[0]))]
-    scores_list = [s[:len(name_list)+1] for s in scores_list]
-    name_list.reverse()
-    exam_scores = [s.pop() for s in scores_list]
-    # Check consistency between name_list and scores
-    for s in scores_list:
-        assert len(s) == len(name_list), 'Amount of questions and scores are not equal!'
-    question_scores = [
-        [stud[q] for stud in scores_list]
-        for q in range(len(name_list))
-    ]
-    # Cleaning
-    exam_scores = [
-        np.nan if pt == '-' else float(pt.replace(',', '.')) for pt in exam_scores
-    ]
-    question_scores = [
-        [np.nan if pt == '-' else
-         0 if float(pt.replace(',', '.')) < 0 else
-         float(pt.replace(',', '.')) for pt in q]
-        for q in question_scores
-    ]
-    # Calculate averages and merge with question names
-    with warnings.catch_warnings():
-        warnings.simplefilter('ignore', category=RuntimeWarning)
-        exam_average = np.nanmean(exam_scores).round(2)
-        averages = [np.nanmean(q).round(2) for q in question_scores]
-    q_averages = dict(zip(name_list, averages))
-    # Remove questions that don't exist in database
-    q_averages_copy = copy.deepcopy(q_averages)
-    for k, v in q_averages_copy.items():
-        if not QUESTIONS.find_one({'name': k}):
-            q_averages.pop(k)
-            print(f'Question {k} not in database!')
+    with open(ratings_file, 'r') as rf:
+        averages = json.load(rf)[0][-1]
+    assert averages['nachname'] == 'Gesamtdurchschnitt', \
+        f'Last entry in ratings is not Gesamtdurchschnitt, but {averages["nachname"]} instead!'
+    # Append average question scores to name_pairs
+    for q in name_pairs:
+        avg = averages[q]
+        if avg == '-':
+            avg = np.nan
         else:
-            pass
-    rel_q_averages = {
-        k: round(v / QUESTIONS.find_one({'name': k})['points'], 2)
-        for k, v in q_averages.items()
-    }
-    # Update database
-    EXAMS.find_one_and_update(
-        {'name': exam_name}, {'$set': {'points_avg': exam_average,
-                                       'questions_avgs': rel_q_averages}}
-    )
-    for k, v in q_averages.items():
+            avg = float(avg.replace(',', '.'))
+        name_pairs[q].append(avg)
+    # Get average exam score
+    exam_average = float([
+        averages[k] for k, v in averages.items() if k.startswith('bewertung')
+    ][0].replace(',', '.'))
+    # Update questions in DB
+    for k, v in name_pairs.items():
         QUESTIONS.find_one_and_update(
-            {'name': k}, {'$set': {f'in_exams.{exam_name}': v}}
+            {'name': v[0]}, {'$set': {f'in_exams.{exam_name}': v[2]}}
         )
+    # Update exam in DB
+    rel_averages = {
+        v[0]: np.round(v[2] / v[1], 2) for k, v in name_pairs.items()
+    }
+    EXAM.find_one_and_update(
+        {'name': exam_name},
+        {'$set': {
+            'points_avg': exam_average,
+            'question_avgs': rel_averages
+         }}
+    )

@@ -901,8 +901,8 @@ def create_xml(exam, filename='import.xml', mode='terminal', questions=None):
             )
             while os.path.isfile(listfile) == False:
                 listfile = input('Please input correct path/filename: ')
-                with open(listfile, 'r') as rf:
-                    questionlist = rf.read().split()
+            with open(listfile, 'r') as rf:
+                questionlist = rf.read().split()
         else:
             questionlist = questions
 
@@ -979,13 +979,16 @@ def create_xml(exam, filename='import.xml', mode='terminal', questions=None):
     # Append XML
     for q in questionlist:
         q_dict = QUESTIONS.find_one({'name': q})
-        q_el = eval((
-            f'{q_dict["moodle_type"].capitalize()}'
-            f'Question(attrib={{"type": "{q_dict["moodle_type"]}"}})'
-        ))
-        q_el.set_defaults(q_dict)
-        q_el.set_additional(q_dict)
-        root.append(q_el)
+        try:
+            q_el = eval((
+                f'{q_dict["moodle_type"].capitalize()}'
+                f'Question(attrib={{"type": "{q_dict["moodle_type"]}"}})'
+                        ))
+            q_el.set_defaults(q_dict)
+            q_el.set_additional(q_dict)
+            root.append(q_el)
+        except:
+            print(f'Question {q} has errors!')
 
     with open(f'{BASE_PATH}/databases/{DB.name}/exams/{exam}/{filename}', 'w') as wf:
         wf.write('<?xml version="1.0" encoding="UTF-8"?>\n')
