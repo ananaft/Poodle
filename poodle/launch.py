@@ -38,7 +38,9 @@ if __name__ == "__main__":
             last_backup = float(rf.read())
         # Automatic backup if last backup is older than one week
         if time.time() - last_backup > 604800:
+            print('Last backup is older than 7 days. Generating new one.\n')
             backup()
+            print('\n\n')
     else:
         print('No backups found.')
     # Report status

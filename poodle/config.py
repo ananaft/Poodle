@@ -67,7 +67,7 @@ def apply_config():
 
 
 ## Global variables
-CLIENT = pymongo.MongoClient()
+CLIENT = pymongo.MongoClient(f'{sys.argv[-2]}')
 DB = eval(f'CLIENT.{sys.argv[-1]}')
 QUESTIONS = DB.questions
 EXAMS = DB.exams

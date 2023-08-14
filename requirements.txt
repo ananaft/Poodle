@@ -3,3 +3,5 @@ pandas
 Pillow
 pymongo
 pyperclip
+lxml
+PyGObject

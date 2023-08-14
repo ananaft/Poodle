@@ -140,6 +140,8 @@ def evaluate_exam(exam_name, stats_file, ratings_file):
             pass
         else:
             return 'Evaluation aborted.'
+    assert EXAMS.find_one({'name': exam_name}), \
+        f'Exam {exam_name} does not exist in database!'
 
     # Read stats_file for question names
     with open(stats_file, 'r') as rf:
@@ -186,10 +188,12 @@ def evaluate_exam(exam_name, stats_file, ratings_file):
     rel_averages = {
         v[0]: np.round(v[2] / v[1], 2) for k, v in name_pairs.items()
     }
-    EXAM.find_one_and_update(
+    EXAMS.find_one_and_update(
         {'name': exam_name},
         {'$set': {
             'points_avg': exam_average,
             'question_avgs': rel_averages
          }}
     )
+
+    print(f'\nExam {exam_name} succesfully evaluated.')
