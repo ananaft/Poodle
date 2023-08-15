@@ -53,18 +53,18 @@ connect_server () {
 
 main () {
     # Parse command arguments
-    while getopts "hls:u:p:v:" option; do
+    while getopts "hls:u:p:" option; do
 	case $option in
 	    h)
 		usage
 		exit 0
 		;;
 	    l)
-		[ -n "$connection_type" ] && usage && exit 1 || \
+		[[ -n "$connection_type" ]] && usage && exit 1 || \
 			connection_type='local'
 		;;
 	    s)
-		[ -n "$connection_type" ] && usage && exit 1 || \
+		[[ -n "$connection_type" ]] && usage && exit 1 || \
 			connection_type='server'
 		address="$OPTARG"
 		;;
@@ -73,9 +73,6 @@ main () {
 		;;
 	    p)
 		password="$OPTARG"
-		;;
-	    v)
-		virtualenv="$OPTARG"
 		;;
 	    \?)
 		exit 1
@@ -114,9 +111,31 @@ main () {
 	connect_server
     fi
 
+    # Set up virtual environment
+    [[ -n "$VIRTUAL_ENV" ]] || \
+	{ ls | grep -q 'venv' && \
+	      echo -e 'Entering virtual environment...' && \
+	      source venv/bin/activate && \
+	      echo -e 'Done.\n' ; } || \
+	{ echo -e 'Entering virtual environment...' && \
+	      python -m venv venv && \
+	      source venv/bin/activate && \
+	      echo 'Done.\n '; }
     # Install packages
-    pip3 install --no-python-version-warning -qqqr requirements.txt || \
-    	pip3 install -qqqr requirements.txt
+    pip3 install --no-python-version-warning -qqr requirements.txt &
+    pid=$!
+    # Loading animation
+    dots[0]='.  '
+    dots[1]='.. '
+    dots[2]='...'
+    i=-1
+    while kill -0 "$pid" 2>/dev/null; do
+	i=$(( (i+1) % 3 ))
+	printf "\rChecking/installing python packages${dots[i]}"
+	sleep .4
+    done
+    printf "\rChecking/installing python packages...\nDone.\n\n"
+
     # Start Poodle
     python3 -i poodle/launch.py "$connection_string" "$db"
     # Delete info stored in variables
