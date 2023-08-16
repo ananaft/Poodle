@@ -67,7 +67,13 @@ def apply_config():
 
 
 ## Global variables
-CLIENT = pymongo.MongoClient(f'{sys.argv[-2]}')
+# Manage arguments passed from shell script to launch.py
+args = [x for x in sys.argv if x != '']
+if len(args) == 5:
+    CREDENTIALS = (sys.argv[-4], sys.argv[-3])
+del args
+CONNECTION = sys.argv[-2]
+CLIENT = pymongo.MongoClient(f'{CONNECTION}')
 DB = eval(f'CLIENT.{sys.argv[-1]}')
 QUESTIONS = DB.questions
 EXAMS = DB.exams

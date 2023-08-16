@@ -23,9 +23,19 @@ def backup(db=DB.name) -> None:
     os.mkdir(f'{BASE_PATH}/databases/{db}/backup/{backup_time}')
     with open(f'{BASE_PATH}/databases/{db}/backup/{backup_time}/timestamp', 'w') as wf:
         wf.write(str(time.time()))
-    if platform.system() == 'Linux':
-        subprocess.run(["mongodump", f"--db={db}",
-                        f"--out={BASE_PATH}/databases/{db}/backup/{backup_time}"])
+    # Backup from server
+    if 'localhost' not in CONNECTION:
+        subprocess.run(
+            ["mongodump", f"--db={db}",
+             f"--out={BASE_PATH}/databases/{db}/backup/{backup_time}",
+             f"--authenticationDatabase=admin", f"{CONNECTION}"]
+        )
+    # Local backup
+    else:
+        subprocess.run(
+            ["mongodump", f"--db={db}",
+             f"--out={BASE_PATH}/databases/{db}/backup/{backup_time}"]
+        )
 
 
 def restore(path=None, db=DB.name) -> None:
@@ -35,7 +45,15 @@ def restore(path=None, db=DB.name) -> None:
     if path == None:
         folder = sorted(os.listdir(BASE_PATH + f'/databases/{db}/backup/'))[-1]
         path = BASE_PATH + f'/databases/{db}/backup/' + folder
-    if platform.system() == 'Linux':
+    # Restore local backup files to server
+    if 'localhost' not in CONNECTION:
+        subprocess.run(
+            ["mongorestore", f"--host={CONNECTION[CONNECTION.find('@')+1:]}",
+             f"--username={CREDENTIALS[0]}", f"--password={CREDENTIALS[1]}",
+             f"--authenticationDatabase=admin", f"--nsInclude={db}.*", f"{path}"]
+        )
+    # Restore backup files to localhost
+    else:
         subprocess.run(["mongorestore", f"--nsInclude={db}.*", f"{path}"])
 
 

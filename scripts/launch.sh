@@ -137,7 +137,7 @@ main () {
     printf "\rChecking/installing python packages...\nDone.\n\n"
 
     # Start Poodle
-    python3 -i poodle/launch.py "$connection_string" "$db"
+    python3 -i poodle/launch.py "$username" "$password" "$connection_string" "$db"
     # Delete info stored in variables
     unset address
     unset username
@@ -147,7 +147,7 @@ main () {
     # Kill daemon on exit if started by Poodle
     pid=$!
     wait $pid
-    [[ "$kill_daemon" ]] && \
+    [[ -n "$kill_daemon" ]] && \
 	pid=$(ps a | awk '/mongod/ {print $1}' | head -n 1) && \
 	kill $pid
 }
