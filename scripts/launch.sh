@@ -115,9 +115,6 @@ main () {
 	esac
     done
 
-    # Install PyGObject
-    install_pygobject
-
     # Set base directory
     cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
     cd ".."
