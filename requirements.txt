@@ -4,4 +4,5 @@ Pillow
 pymongo
 pyperclip
 lxml
+pycairo
 PyGObject

@@ -5,6 +5,40 @@ usage () {
     echo -e '\nThis will be the documentation for the shell script later on...\n'
 }
 
+# Install PyGObject depending on OS
+install_pygobject () {
+    local -a already_installed
+    # Ubuntu/Debian
+    local -a debian_packages=(
+	'libgirepository1.0-dev' 'gcc' 'libcairo2-dev' 'pkg-config'
+	'python3-dev' 'gir1.2-gtk-4.0'
+    )
+    # Install missing system packages
+    cat /etc/os-release | grep -Eq '^ID=([Dd]ebian|[Uu]buntu)' &&
+	{ for i in "${debian_packages[@]}"; do
+	      apt list --installed 2>/dev/null | grep -q "^$i" &&
+		  already_installed+=( "$i" )
+	  done;
+	  for i in "${already_installed[@]}"; do
+	      debian_packages=( "${debian_packages[@]/$i}" )
+	  done; } &&
+	sudo apt install "${debian_packages[@]}"
+    # Manjaro/Arch
+    local -a arch_packages=(
+	'cairo' 'pkgconf' 'gobject-introspection' 'gtk4'
+    )
+    # Install missing system packages
+    cat /etc/os-release | grep -Eq '^ID=([Aa]rch|[Mm]anjaro)' &&
+	{ for i in "${arch_packages[@]}"; do
+	      pacman -Q | grep -q "^$i" && already_installed+=( "$i" )
+	  done;
+	  for i in "${already_installed[@]}"; do
+	      arch_packages=( "${arch_packages[@]/$i}" )
+	  done; } &&
+	[[ -n "$arch_packages" ]] &&
+	sudo pacman -S --needed "${arch_packages[@]}"
+}
+
 # Checks for correct database naming
 name_check () {
     for (( i=0; i<"${#1}"; i++ )); do
@@ -27,7 +61,7 @@ connect_local () {
 	    xfce4-terminal)
 		xfce4-terminal -e "mongod --dbpath ./mongo --logappend --nojournal"
 		;;
-	    gnome-terminal)
+	    gnome-terminal|gnome-terminal-)
 		gnome-terminal -- sh -c "mongod --dbpath ./mongo --logappend --nojournal; bash"
 		;;
 	    urxvt|urxvtd)
@@ -45,7 +79,7 @@ connect_local () {
 
 connect_server () {
     # Ask for password if only username is provided
-    [[ -z "$password" && -n "$username" ]] && \
+    [[ -z "$password" && -n "$username" ]] &&
 	read -s -p 'Enter password:' password && echo
 
     connection_string="mongodb://${username}:${password}@${address}"
@@ -60,11 +94,11 @@ main () {
 		exit 0
 		;;
 	    l)
-		[[ -n "$connection_type" ]] && usage && exit 1 || \
+		[[ -n "$connection_type" ]] && usage && exit 1 ||
 			connection_type='local'
 		;;
 	    s)
-		[[ -n "$connection_type" ]] && usage && exit 1 || \
+		[[ -n "$connection_type" ]] && usage && exit 1 ||
 			connection_type='server'
 		address="$OPTARG"
 		;;
@@ -80,14 +114,21 @@ main () {
 	esac
     done
 
+    # Install PyGObject
+    install_pygobject
+
     # Set base directory
     cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
     cd ".."
     # Create mongo directory if necessary
     if [[ "$connection_type" == 'local' ]]; then
-	if ! ls | grep -q "^mongo$"; then
+	if ! ls | grep -q '^mongo$'; then
 	    mkdir mongo
 	fi
+    fi
+    # Create databases directory if necessary
+    if ! ls | grep -q '^databases$'; then
+	mkdir databases
     fi
 
     # Set database
@@ -112,17 +153,18 @@ main () {
     fi
 
     # Set up virtual environment
-    [[ -n "$VIRTUAL_ENV" ]] || \
-	{ ls | grep -q 'venv' && \
-	      echo -e 'Entering virtual environment...' && \
-	      source venv/bin/activate && \
-	      echo -e 'Done.\n' ; } || \
-	{ echo -e 'Entering virtual environment...' && \
-	      python -m venv venv && \
-	      source venv/bin/activate && \
-	      echo 'Done.\n '; }
+    [[ -n "$VIRTUAL_ENV" ]] ||
+	{ ls | grep -q 'venv' &&
+	      echo -e 'Entering virtual environment...' &&
+	      source venv/bin/activate &&
+	      echo -e 'Done.\n'; } ||
+	{ echo -e 'Entering virtual environment...' &&
+	      python3 -m venv venv &&
+	      source venv/bin/activate &&
+	      echo -e 'Done.\n'; }
     # Install packages
-    pip3 install --no-python-version-warning -qqr requirements.txt &
+    { install_pygobject;
+      pip3 install --no-python-version-warning -qqr requirements.txt; } &
     pid=$!
     # Loading animation
     dots[0]='.  '
@@ -147,8 +189,8 @@ main () {
     # Kill daemon on exit if started by Poodle
     pid=$!
     wait $pid
-    [[ -n "$kill_daemon" ]] && \
-	pid=$(ps a | awk '/mongod/ {print $1}' | head -n 1) && \
+    [[ -n "$kill_daemon" ]] &&
+	pid=$(ps a | awk '/mongod/ {print $1}' | head -n 1) &&
 	kill $pid
 }
 
