@@ -50,7 +50,7 @@ install_system_dependencies () {
     # Install missing system packages
     cat /etc/os-release | grep -Eq '^ID=([Dd]ebian|[Uu]buntu)' &&
 	{ for i in "${debian_packages[@]}"; do
-	      apt list --installed 2>/dev/null | grep -q "^$i" &&
+	      apt list --installed 2>/dev/null | grep -q "^$i " &&
 		  already_installed+=( "$i" )
 	  done;
 	  for i in "${already_installed[@]}"; do
@@ -66,7 +66,7 @@ install_system_dependencies () {
     # Install missing system packages
     cat /etc/os-release | grep -Eq '^ID=([Aa]rch|[Mm]anjaro)' &&
 	{ for i in "${arch_packages[@]}"; do
-	      pacman -Q | grep -q "^$i" && already_installed+=( "$i" )
+	      pacman -Q | grep -q "^$i " && already_installed+=( "$i" )
 	  done;
 	  for i in "${already_installed[@]}"; do
 	      arch_packages=( "${arch_packages[@]/$i}" )
