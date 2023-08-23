@@ -5,9 +5,43 @@ usage () {
     echo -e '\nThis will be the documentation for the shell script later on...\n'
 }
 
-# Install python dependencies based on OS
-install_python_dependencies () {
+# Loading animation
+loading () {
+    local -a dots=( '.  ' '.. ' '...' )
+    local i=-1
+
+    while kill -0 "$1" 2>/dev/null; do
+	i=$(( (i+1) % 3 ))
+	printf "\r$2${dots[i]}"
+	sleep .4
+    done
+    printf "\r$2...\nDone.\n\n"
+}
+
+# Checks for correct database
+db_check () {
+    local message1='Error: No database specified!\n'
+    local message2='Error: Database name contains non-alphanumeric characters!\n'
+    # Ensure database is not a command option
+    if [[ "${1:0:1}" == '-' ]]; then
+	echo -e "$message1"
+	exit 1
+    fi
+    # Ensure database has only alphanumeric characters
+    for (( i=0; i<"${#1}"; i++ )); do
+        if ! [[ "${1:$i:1}" == [[:alnum:]] ]]; then
+	    echo -e "$message2"
+            exit 1
+        fi
+    done
+
+    return 0
+}
+
+# Install system-wide dependencies based on OS
+install_system_dependencies () {
     local -a already_installed
+
     # Ubuntu/Debian
     local -a debian_packages=(
 	'python3-pip' 'python3-venv' 'libgirepository1.0-dev' 'gcc'
@@ -24,6 +58,7 @@ install_python_dependencies () {
 	  done; } &&
 	[[ -n "$debian_packages" ]] &&
 	yes | sudo apt install "${debian_packages[@]}"
+
     # Manjaro/Arch
     local -a arch_packages=(
 	'cairo' 'pkgconf' 'gobject-introspection' 'gtk4'
@@ -38,20 +73,6 @@ install_python_dependencies () {
 	  done; } &&
 	[[ -n "$arch_packages" ]] &&
 	yes | sudo pacman -S --needed "${arch_packages[@]}"
-
-    # Install python packages
-    pip3 install --no-python-version-warning -qqr requirements.txt
-}
-
-# Checks for correct database naming
-name_check () {
-    for (( i=0; i<"${#1}"; i++ )); do
-        if ! [[ "${1:$i:1}" == [[:alnum:]] ]]; then
-            return 1
-        fi
-    done
-    
-    return 0
 }
 
 connect_local () {
@@ -59,6 +80,12 @@ connect_local () {
     # initiate one manually
     if ! ps -A | grep -q 'mongod'; then
 	kill_daemon=1
+	# Create directory if necessary
+	if [[ "$connection_type" == 'local' ]]; then
+	    if ! ls | grep -q '^mongo$'; then
+		mkdir mongo
+	    fi
+	fi
 	# Determine correct terminal emulator for async command
 	term=$(ps -o comm= -p "$(($(ps -o ppid= -p "$(($(ps -o sid= -p "$$")))")))")
 	case "$term" in
@@ -121,26 +148,14 @@ main () {
     # Set base directory
     cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
     cd ".."
-    # Create mongo directory if necessary
-    if [[ "$connection_type" == 'local' ]]; then
-	if ! ls | grep -q '^mongo$'; then
-	    mkdir mongo
-	fi
-    fi
     # Create databases directory if necessary
     if ! ls | grep -q '^databases$'; then
 	mkdir databases
     fi
 
     # Set database
-    if ! name_check "${@: -1}"; then
-        echo 'Error: Please use only alphanumeric characters for a database name!'
-        exit
-    elif ! [[ "${@: -1}" ]]; then
-        echo 'Error: No database specified!'
-        exit
-    fi
-    local db="${@: -1}"
+    db="${@: -1}"
+    db_check "$db"
 
     # Connect to MongoDB
     if [[ -z "$connection_type" ]]; then
@@ -153,6 +168,11 @@ main () {
 	connect_server
     fi
 
+    # Install system-wide dependencies
+    install_system_dependencies &
+    pid=$!
+    loading "$pid" 'Checking/installing system-wide dependencies'
+
     # Set up virtual environment
     [[ -n "$VIRTUAL_ENV" ]] ||
 	{ ls | grep -q 'venv' &&
@@ -163,20 +183,11 @@ main () {
 	      python3 -m venv venv &&
 	      source venv/bin/activate &&
 	      echo -e 'Done.\n'; }
-    # Install packages
-    install_python_dependencies &
+
+    # Install python packages
+    pip3 install --no-python-version-warning -qqr requirements.txt &
     pid=$!
-    # Loading animation
-    dots[0]='.  '
-    dots[1]='.. '
-    dots[2]='...'
-    i=-1
-    while kill -0 "$pid" 2>/dev/null; do
-	i=$(( (i+1) % 3 ))
-	printf "\rChecking/installing python packages${dots[i]}"
-	sleep .4
-    done
-    printf "\rChecking/installing python packages...\nDone.\n\n"
+    loading "$pid" 'Checking/installing python packages'
 
     # Start Poodle
     python3 -i poodle/launch.py "$username" "$password" "$connection_string" "$db"
