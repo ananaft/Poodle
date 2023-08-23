@@ -5,13 +5,13 @@ usage () {
     echo -e '\nThis will be the documentation for the shell script later on...\n'
 }
 
-# Install PyGObject depending on OS
-install_pygobject () {
+# Install python dependencies based on OS
+install_python_dependencies () {
     local -a already_installed
     # Ubuntu/Debian
     local -a debian_packages=(
-	'libgirepository1.0-dev' 'gcc' 'libcairo2-dev' 'pkg-config'
-	'python3-dev' 'gir1.2-gtk-4.0'
+	'python3-pip' 'python3-venv' 'libgirepository1.0-dev' 'gcc'
+	'libcairo2-dev' 'pkg-config' 'python3-dev' 'gir1.2-gtk-4.0'
     )
     # Install missing system packages
     cat /etc/os-release | grep -Eq '^ID=([Dd]ebian|[Uu]buntu)' &&
@@ -23,7 +23,7 @@ install_pygobject () {
 	      debian_packages=( "${debian_packages[@]/$i}" )
 	  done; } &&
 	[[ -n "$debian_packages" ]] &&
-	sudo apt install "${debian_packages[@]}"
+	yes | sudo apt install "${debian_packages[@]}"
     # Manjaro/Arch
     local -a arch_packages=(
 	'cairo' 'pkgconf' 'gobject-introspection' 'gtk4'
@@ -37,7 +37,10 @@ install_pygobject () {
 	      arch_packages=( "${arch_packages[@]/$i}" )
 	  done; } &&
 	[[ -n "$arch_packages" ]] &&
-	sudo pacman -S --needed "${arch_packages[@]}"
+	yes | sudo pacman -S --needed "${arch_packages[@]}"
+
+    # Install python packages
+    pip3 install --no-python-version-warning -qqr requirements.txt
 }
 
 # Checks for correct database naming
@@ -161,8 +164,7 @@ main () {
 	      source venv/bin/activate &&
 	      echo -e 'Done.\n'; }
     # Install packages
-    { install_pygobject;
-      pip3 install --no-python-version-warning -qqr requirements.txt; } &
+    install_python_dependencies &
     pid=$!
     # Loading animation
     dots[0]='.  '
