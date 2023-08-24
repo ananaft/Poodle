@@ -334,8 +334,8 @@ def add_json(json_file: str) -> tuple[None, str]:
     Dependencies: re, json, pymongo
     """
 
-    with open(json_file, 'r') as f:
-        question_list = json.load(f)
+    with open(json_file, 'r') as rf:
+        question_list = json.load(rf)
 
     error_list = []
     for q in question_list:
@@ -357,189 +357,6 @@ def add_json(json_file: str) -> tuple[None, str]:
         print('Some questions could not be added due to errors:')
         pprint(error_list)
         return ''
-
-
-# def add_excel(file_path: str) -> None:
-#     """
-#     Add questions to the database automatically by reading an XLS file.
-
-#     Arguments:
-#     ----------
-#     file_path (str):
-#       Path of XLS file to be read.
-
-#     -------------------------------------
-#     Dependencies: pandas, numpy, json, re
-#     """
-
-#     def read_row(row: pd.Series, fields: dict, json_list: list) -> None:
-#         # Turn rows into dicts and append to json_output
-#         append_dict = {}
-#         append_dict.update(
-#             {f: row[f] for f in fields['general']}
-#         )
-#         # Ignore empty fields
-#         append_dict.update(
-#             {f: row[f] for f in fields['optional'] if row[f] != '[]' and row[f] != '{}'}
-#         )
-#         # Add fields depending on moodle_type
-#         append_dict.update(
-#             {f: row[f] for f in fields[row['moodle_type']]}
-#         )
-#         # Convert single and usecase to int
-#         if not np.isnan(row['single']):
-#             append_dict.update(
-#                 {'single': int(row['single'])}
-#             )
-#         if not np.isnan(row['usecase']):
-#             append_dict.update(
-#                 {'usecase': int(row['usecase'])}
-#             )
-#         append_dict.update(
-#             {'in_exams': {}}
-#         )
-#         # Fix possible wrong unicode quotation marks
-#         def quote_fix(field_value: str) -> str:
-#             quote_regex = '[\u201e\u201c\u201f\u201d\u275d\u275e\u2e42\u301d\u301e\u301f\uff02]'
-#             return re.sub(quote_regex, '"', field_value)
-#         append_dict = {
-#             x: (quote_fix(y) if type(y) == str else y)
-#             for x,y in append_dict.items()
-#         }
-#         # Convert list strings into lists
-#         def convert_list(field_value: str) -> str:
-
-#             def to_numbers(el: str) -> tuple[int, float]:
-#                     try:
-#                         return int(el)
-#                     except ValueError:
-#                         try:
-#                             return float(el)
-#                         except ValueError:
-#                             return el
-
-#             if field_value.strip()[0] == '[' and field_value.strip()[-1] == ']':
-#                 # Separate list elements
-#                 list_regex = re.compile(
-#                     r'''
-#                     (
-#                     ((?<=\[")|(?<=\[\s")).+?(?="\s?,) # First element is string
-#                     | 
-#                     ((?<=\[)|(?<=\[\s))[0-9.]+?(?=\s?,) # First element is number
-#                     )
-#                     |
-#                     (
-#                     ((?<=,")|(?<=,\s")).+?(?="\s?,) # Middle element is string
-#                     |
-#                     ((?<=,)|(?<=,\s))[0-9.]+?(?=\s?,) # Middle element is number
-#                     )
-#                     |
-#                     (
-#                     ((?<=,")|(?<=,\s")).+?(?="\s?\]) # Last element is string
-#                     |
-#                     ((?<=,)|(?<=,\s))[0-9.]+?(?=\s?\]) # Last element is number
-#                     )
-#                     ''', re.VERBOSE
-#                 )
-
-#                 converted_list = [x.group(0) for x in re.finditer(list_regex, field_value)]
-#                 converted_list = [to_numbers(x) for x in converted_list]
-                
-#                 return converted_list
-#             else:
-#                 return field_value
-
-#         append_dict = {
-#             x: (convert_list(y) if type(y) == str else y)
-#             for x,y in append_dict.items()
-#         }
-#         # Convert dict strings into dicts
-#         def convert_dict(field_value: str) -> str:
-
-#             def to_numbers(el: str) -> tuple[int, float]:
-#                     try:
-#                         return int(el)
-#                     except ValueError:
-#                         try:
-#                             return float(el)
-#                         except ValueError:
-#                             return el
-
-#             if field_value.strip()[0] == '{' and field_value.strip()[-1] == '}':
-#                 key_regex = re.compile(r'(?<=").+?(?="\s?:)')
-#                 keys = [x.group(0) for x in re.finditer(key_regex, field_value)]
-#                 value_regex = re.compile(r'((?<=":)|(?<=":\s)).+?(?=,\s?")')
-#                 values = [x.group(0) for x in re.finditer(value_regex, field_value)]
-#                 # Convert list values
-#                 values = [convert_list(x) for x in values]
-#                 converted_dict = dict(zip(keys, values))
-
-#                 return converted_dict
-#             else:
-#                 return field_value
-
-#         append_dict = {
-#             x: (convert_dict(y) if type(y) == str else y)
-#             for x,y in append_dict.items()
-#         } ## compare yyy_ to klausur_, maybe switch to eval by fixing non-quotes?
-
-#         # Evaluate list/dict strings
-#         # append_dict = {
-#             # x: (eval(y) if type(y) == str and re.match(r'^(\[|\{).*(\]|\})$', y)
-#                 # else y)
-#             # for x,y in append_dict.items()
-#         # }
-
-#         json_list.append(append_dict)
-
-
-#     # Define fields that each moodle_type will contain
-#     fields = {
-#         'general': [
-#             'name', 'moodle_type', 'family_type', 'points',
-#             'difficulty', 'time_est', 'question'
-#         ],
-#         'optional': [
-#             'img_files', 'tables'
-#         ],
-#         'multichoice': [
-#             'correct_answers', 'false_answers', 'single'
-#         ],
-#         'numerical': [
-#             'correct_answers', 'tolerance'
-#         ],
-#         'shortanswer': [
-#             'correct_answers', 'usecase'
-#         ],
-#         'essay': [
-#             'answer_files'
-#         ],
-#         'matching': [
-#             'correct_answers', 'false_answers'
-#         ],
-#         'gapselect': [
-#             'correct_answers', 'false_answers'
-#         ],
-#         'ddimageortext': [
-#             'correct_answers', 'drops'
-#         ],
-#         'calculated': [
-#             'correct_answers', 'tolerance', 'vars'
-#         ]
-#     }
-
-#     json_output = []
-
-#     df = pd.read_excel(file_path)
-#     df.apply(lambda x: read_row(x, fields, json_output), axis=1)
-
-#     # Create JSON file for add_json() in directory of XLS file
-#     json_path = re.sub(r'(?<=\.)xlsx?$', 'json', file_path)
-#     with open(json_path, 'w') as f:
-#         json.dump(json_output, f, indent=2)
-#     # Delete JSON file if add_json() runs without errors
-#     if add_json(json_path) == None:
-#         os.remove(json_path)
 
 
 def create_template(file_path: str, file_type: str) -> None:
@@ -648,8 +465,8 @@ def create_template(file_path: str, file_type: str) -> None:
         for m in moodle_types:
             m['in_exams'] = {}
         # Write to file
-        with open(f'{file_path}/template.json', 'w') as f:
-            json.dump(moodle_types, f, indent=2)
+        with open(f'{file_path}/template.json', 'w') as rf:
+            json.dump(moodle_types, rf, indent=2)
     else:
         print(f'Unknown file type: {file_type}')
 

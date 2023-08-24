@@ -401,8 +401,8 @@ class MoodleQuestion(ET.ElementBase):
             current_file = q['img_files'][file_index]
             file_format = re.search(r'(?<=\.)\D+$', current_file)
             file_format = file_format.group()
-            with open(f'{BASE_PATH}/databases/{DB.name}/img/' + current_file, 'rb') as f:
-                b64 = base64.b64encode(f.read()).decode('utf-8')
+            with open(f'{BASE_PATH}/databases/{DB.name}/img/' + current_file, 'rb') as rf:
+                b64 = base64.b64encode(rf.read()).decode('utf-8')
             repl = f'<img src="data:image/{file_format};base64,{b64}" alt="" />'
             el.text = ET.CDATA(re.sub(r'\[\[file%s\]\]' % (m.group()), repl, el.text))
 
@@ -676,8 +676,8 @@ class DdimageortextQuestion(MoodleQuestion):
         self.loc.addnext(ET.SubElement(self, 'file', attrib={'name': q['img_files'][0], 'encoding': 'base64'}))
         self.loc = self.loc.getnext()
 
-        with open(f'{BASE_PATH}/databases/{DB.name}/img/' + q['img_files'][0], 'rb') as f:
-            b64 = base64.b64encode(f.read())
+        with open(f'{BASE_PATH}/databases/{DB.name}/img/' + q['img_files'][0], 'rb') as rf:
+            b64 = base64.b64encode(rf.read())
         self.loc.text = b64.decode('utf-8')
 
         for a in q['correct_answers']:

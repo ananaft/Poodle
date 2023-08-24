@@ -57,7 +57,7 @@ install_system_dependencies () {
 	      debian_packages=( "${debian_packages[@]/$i}" )
 	  done; } &&
 	[[ -n "$debian_packages" ]] &&
-	yes | sudo apt install "${debian_packages[@]}"
+	yes | sudo apt -qqq install "${debian_packages[@]}"
 
     # Manjaro/Arch
     local -a arch_packages=(

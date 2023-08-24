@@ -22,14 +22,14 @@ def setup_db(db) -> None:
             'RANDOM_ARR_SIZE': 100,
             'COLLECTIONS': ['questions', 'exams']
         }
-        with open(DB_PATH + 'config.json', 'w') as f:
-            json.dump(config, f, indent=2)
+        with open(DB_PATH + 'config.json', 'w') as wf:
+            json.dump(config, wf, indent=2)
 
 
 def apply_config():
     db = DB.name
-    with open(BASE_PATH + f'/databases/{db}/config.json', 'r') as f:
-        config = json.load(f)
+    with open(BASE_PATH + f'/databases/{db}/config.json', 'r') as rf:
+        config = json.load(rf)
     # Check for config keys
     template = {
         'NAME': f'{db}',
@@ -54,10 +54,10 @@ def apply_config():
             pass
         config['Q_CATEGORIES'] = db_categories
     # Update and reload JSON
-    with open(BASE_PATH + f'/databases/{db}/config.json', 'w') as f:
-        json.dump(config, f, indent=2)
-    with open(BASE_PATH + f'/databases/{db}/config.json', 'r') as f:
-        config = json.load(f)
+    with open(BASE_PATH + f'/databases/{db}/config.json', 'w') as wf:
+        json.dump(config, wf, indent=2)
+    with open(BASE_PATH + f'/databases/{db}/config.json', 'r') as rf:
+        config = json.load(rf)
     # Set variables defined in JSON
     Q_CATEGORIES = config['Q_CATEGORIES']
     SHUFFLE = config['SHUFFLE']
