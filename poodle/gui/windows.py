@@ -69,11 +69,17 @@ class Overview(Gtk.Window):
         # Make exam appearance counter
         transform = lambda x: int(type(x) == float)
         appearances = df[exam_list].applymap(transform).sum(axis=1)
-        df.insert(1, 'appearances', appearances)
+        df.insert(1, 'appearances', appearances.astype('int64'))
 
         data = row_to_list(df)
-        column_types = [numpy_to_native(x.type) for x in list(df.dtypes)]
-        column_names = ['question', 'appearances', 'difficulty', 'time__est'] + list(df.columns)[4:]
+        # Empty databases would raise TypeError in numpy_to_native
+        if df.empty:
+            column_types = [str, int, int, int]
+        else:
+            column_types = [numpy_to_native(x.type) for x in list(df.dtypes)]
+        column_names = [
+            'question', 'appearances', 'difficulty', 'time__est'
+            ] + list(df.columns)[4:]
 
         return data, column_types, column_names
 
