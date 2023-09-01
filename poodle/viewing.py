@@ -78,7 +78,7 @@ def gtk_overview() -> None:
     """
 
     def run_overview() -> None:
-        win = gui.windows.Overview()
+        win = gui.windows.MainWindow()
         win.show_all()
         Gtk.main()
 

@@ -11,7 +11,7 @@ import ast
 import re
 
 
-class OverviewControlPanel(Gtk.ActionBar):
+class MainQuestionControlPanel(Gtk.ActionBar):
     """
     Dependencies: Gtk
     """
@@ -20,7 +20,7 @@ class OverviewControlPanel(Gtk.ActionBar):
 
         super().__init__()
         self.parent_window = parent
-        self.table = self.parent_window.table
+        self.table = self.parent_window.notebook.question_table
 
         self.new_button = Gtk.Button(label='New')
         self.new_button.connect('clicked', self.table.on_button_press)
@@ -58,6 +58,52 @@ class OverviewControlPanel(Gtk.ActionBar):
         self.pack_end(self.search_entry)
 
 
+class MainExamControlPanel(Gtk.ActionBar):
+    """
+    Dependencies: Gtk
+    """
+
+    def __init__(self, parent):
+
+        super().__init__()
+        self.parent_window = parent
+        self.table = self.parent_window.notebook.exam_table
+
+        self.new_button = Gtk.Button(label='New')
+        self.new_button.connect('clicked', self.table.on_button_press)
+        self.pack_start(self.new_button)
+
+        self.view_button = Gtk.Button(label='View')
+        self.view_button.connect('clicked', self.table.on_button_press)
+        self.pack_start(self.view_button)
+
+        self.eval_button = Gtk.Button(label='Evaluate')
+        self.eval_button.connect('clicked', self.table.on_button_press)
+        self.pack_start(self.eval_button)
+
+        # Filter functionality
+        self.filter_button = Gtk.Button(label='Filter')
+        self.filter_button.connect('clicked', self.table.on_button_press)
+        self.pack_end(self.filter_button)
+
+        exam_fields = [
+            'name',
+            'points_max',
+            'points_avg',
+            'questions',
+            'difficulty',
+            'time_est'
+        ]
+        self.fields_combo = Gtk.ComboBoxText()
+        for f in exam_fields:
+            self.fields_combo.append_text(f)
+        self.fields_combo.set_active(0)
+        self.pack_end(self.fields_combo)
+
+        self.search_entry = Gtk.Entry()
+        self.pack_end(self.search_entry)
+
+
 class QuestionControlPanel(Gtk.ActionBar):
     """
     Dependencies: Gtk, json, question, config
@@ -68,7 +114,7 @@ class QuestionControlPanel(Gtk.ActionBar):
         super().__init__()
         self.parent_window = parent
         self.overview = self.parent_window.parent_window
-        self.table = self.overview.table
+        self.table = self.overview.notebook.question_table
 
         self.save_button = Gtk.Button(label='Save')
         self.save_button.connect('clicked', self.on_save_clicked)
@@ -122,7 +168,7 @@ class QuestionControlPanel(Gtk.ActionBar):
                     self.table.question_liststore.clear()
                     for c in self.table.get_columns():
                         self.table.remove_column(c)
-                    self.table.build_table(*self.overview.load_data())
+                    self.table.build_table(*self.table.load_data())
             elif response == Gtk.ResponseType.NO:
                 pass
             dialog.destroy()
@@ -150,7 +196,7 @@ class QuestionControlPanel(Gtk.ActionBar):
                     self.table.question_liststore.clear()
                     for c in self.table.get_columns():
                         self.table.remove_column(c)
-                    self.table.build_table(*self.overview.load_data())
+                    self.table.build_table(*self.table.load_data())
             elif response == Gtk.ResponseType.NO:
                 pass
             dialog.destroy()
@@ -224,7 +270,7 @@ class QuestionControlPanel(Gtk.ActionBar):
                 self.table.question_liststore.clear()
                 for c in self.table.get_columns():
                     self.table.remove_column(c)
-                self.table.build_table(*self.overview.load_data())
+                self.table.build_table(*self.table.load_data())
                 # Close question window
                 dialog.destroy()
                 self.parent_window.destroy()
