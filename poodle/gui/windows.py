@@ -8,6 +8,7 @@ from poodle import config
 from poodle import exam
 import gui.treeviews
 import gui.panels
+import gui.dialogs
 import gui.notebooks
 # Other modules
 import numpy as np
@@ -35,6 +36,22 @@ class MainWindow(Gtk.Window):
         self.grid.attach(self.notebook, 0, 0, 1, 1)
         self.grid.attach_next_to(self.control, self.notebook,
                                  Gtk.PositionType.BOTTOM, 1, 1)
+
+    def update_tables(self) -> None:
+
+        questions = self.notebook.question_table
+        exams = self.notebook.exam_table
+
+        # Update questions
+        questions.question_liststore.clear()
+        for c in questions.get_columns():
+            questions.remove_column(c)
+        questions.build_table(*questions.load_data())
+        # Update exams
+        exams.exam_liststore.clear()
+        for c in exams.get_columns():
+            exams.remove_column(c)
+        exams.build_table(*exams.load_data())
 
 
 class QuestionWindow(Gtk.Window):
@@ -125,7 +142,7 @@ class VariableFileWindow(Gtk.Window):
 
 class ExamWindow(Gtk.Window):
     """
-    Dependencies: Gtk, gui.panels, config, exam
+    Dependencies: Gtk, gui.panels, gui.dialogs, config, exam
     """
 
     def __init__(self, parent, exam_name: str):
@@ -226,14 +243,11 @@ class ExamWindow(Gtk.Window):
                     -1
                 )
             # Message user
-            dialog = Gtk.MessageDialog(
-                transient_for=self.parent_window,
-                message_type=Gtk.MessageType.INFO,
-                buttons=Gtk.ButtonsType.OK,
-                text='Marked questions could not be found in database!'
+            dialog = gui.dialogs.OKDialog(
+                self.parent_window,
+                'Marked questions could not be found in database!'
             )
-            dialog.run()
-            dialog.destroy()
+            dialog._run()
 
             return 1
         # Calculate estimated time
@@ -274,22 +288,10 @@ class ExamWindow(Gtk.Window):
             include_hidden_chars=True
         ).split()
         # Ask if selected questions are correct
-        dialog = Gtk.MessageDialog(
-            transient_for=self.parent_window,
-            message_type=Gtk.MessageType.INFO,
-            buttons=Gtk.ButtonsType.YES_NO,
-            text=('Are you sure you want to create ' +
-                  f'{self.get_property("title")} with the current ' +
-                  'question selection?')
+        dialog = gui.dialogs.QuestionSelectionDialog(
+            self.parent_window, self
         )
-        response = dialog.run()
-        if response == Gtk.ResponseType.YES:
-            exam.create_exam(self.get_property('title'), mode='gui',
-                        questions=question_list)
-            dialog.destroy()
-            self.destroy()
-        elif response == Gtk.ResponseType.NO:
-            dialog.destroy()
+        dialog._run(question_list)
 
     def remove_parent_attribute(self, window):
         delattr(self.parent_window, 'exam_window')

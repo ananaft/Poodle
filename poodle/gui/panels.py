@@ -30,6 +30,10 @@ class MainQuestionControlPanel(Gtk.ActionBar):
         self.view_button.connect('clicked', self.table.on_button_press)
         self.pack_start(self.view_button)
 
+        self.delete_button = Gtk.Button(label='Delete')
+        self.delete_button.connect('clicked', self.table.on_button_press)
+        self.pack_start(self.delete_button)
+
         self.add_to_exam_button = Gtk.Button(label='Add to exam')
         self.add_to_exam_button.connect('clicked', self.table.on_button_press)
         self.pack_start(self.add_to_exam_button)
@@ -76,6 +80,10 @@ class MainExamControlPanel(Gtk.ActionBar):
         self.view_button = Gtk.Button(label='View')
         self.view_button.connect('clicked', self.table.on_button_press)
         self.pack_start(self.view_button)
+
+        self.delete_button = Gtk.Button(label='Delete')
+        self.delete_button.connect('clicked', self.table.on_button_press)
+        self.pack_start(self.delete_button)
 
         self.eval_button = Gtk.Button(label='Evaluate')
         self.eval_button.connect('clicked', self.table.on_button_press)

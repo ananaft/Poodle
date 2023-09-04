@@ -97,64 +97,15 @@ class QuestionTreeview(Gtk.TreeView):
     # Create window for new question
     def new_question(self) -> None:
 
-        # Fill question_content with default values for data types
-        def default_fill(moodle_type: str, field_name: str, output_type: type):
-            if output_type == str:
-                return ''
-            elif output_type == int:
-                return 0
-            elif output_type == float:
-                return 0.0
-            elif output_type == list:
-                # Some SimpleListGrid fields without add button
-                # need to be handled separately
-                if moodle_type == 'essay' and field_name == 'answer_files':
-                    return ['', '']
-                elif moodle_type == 'calculated' and field_name == 'tolerance':
-                    return ['', '', '']
-                else:
-                    return ['']
-            elif output_type == dict:
-                return {}
-
-        question_content = {
-            k: default_fill('general', k, v)
-            for k, v in config.KEY_TYPES['general'].items()
-        }
-        question_content['name'] = 'New question'
-        # Ask for moodle_type
-        dialog = Gtk.MessageDialog(
-            transient_for=self.parent_window,
-            message_type=Gtk.MessageType.OTHER,
-            buttons=Gtk.ButtonsType.OK_CANCEL,
-            text=f'Please pick a Moodle type for the new question:'
-        )
-        # Add list of moodle types to dialog
-        box = dialog.get_message_area()
-        moodle_types = Gtk.ComboBoxText()
-        for mt in config.KEY_TYPES.keys():
-            if mt != 'general' and mt != 'optional':
-                moodle_types.append_text(mt)
-        moodle_types.set_active(0)
-        box.pack_end(moodle_types, True, True, 10)
-        box.show_all()
-        # Create new question or cancel
-        response = dialog.run()
-        if response == Gtk.ResponseType.OK:
-            # Set remaining fields based on moodle_type
-            question_content['moodle_type'] = moodle_types.get_active_text()
-            question_content.update({
-                k: default_fill(question_content['moodle_type'], k, v) for k, v in
-                config.KEY_TYPES[question_content['moodle_type']].items()
-            })
+        dialog = gui.dialogs.NewQuestionDialog(self.parent_window)
+        question_content = dialog._run()
+        if question_content:
+            # Open new window with empty question of chosen Moodle type
             new_window = gui.windows.QuestionWindow(self.parent_window, question_content)
             # Make certain fields editable
             new_window.notebook.question_grid.name_field.set_editable(True)
             new_window.notebook.question_grid.family_type_field.set_editable(True)
             new_window.show_all()
-        elif response == Gtk.ResponseType.CANCEL:
-            pass
-        dialog.destroy()
 
     # Show selected question in new window
     def view_question(self) -> None:
@@ -167,6 +118,11 @@ class QuestionTreeview(Gtk.TreeView):
 
         new_window = gui.windows.QuestionWindow(self.parent_window, question_content)
         new_window.show_all()
+
+    # Remove selected question from database
+    def delete_question(self) -> None:
+
+        return 0
 
     # Add questions to exam
     def add_to_exam(self) -> None:
@@ -255,6 +211,8 @@ class QuestionTreeview(Gtk.TreeView):
                 self.new_question()
             case 'View':
                 self.view_question()
+            case 'Delete':
+                self.delete_question()
             case 'Add to exam':
                 self.add_to_exam()
             case 'Filter':
@@ -272,6 +230,8 @@ class QuestionTreeview(Gtk.TreeView):
                 self.view_question()
             case 'Return':
                 self.view_question()
+            case 'd':
+                self.delete_question()
             case 'a':
                 self.add_to_exam()
             case 'f':
@@ -382,13 +342,22 @@ class ExamTreeview(Gtk.TreeView):
 
     # Create window for new exam
     def new_exam(self) -> None:
+
         return 0
 
     # Show selected exam in new window
     def view_exam(self) -> None:
+
         return 0
 
+    # Remove selected exam from database
+    def delete_exam(self) -> None:
+
+        return 0
+
+    # Evaluate selected exam
     def evaluate_exam(self) -> None:
+
         return 0
 
     # Filter questions based on search defined in control panel
@@ -433,6 +402,8 @@ class ExamTreeview(Gtk.TreeView):
                 self.new_exam()
             case 'View':
                 self.view_exam()
+            case 'Delete':
+                self.delete_exam()
             case 'Evaluate':
                 self.evaluate_exam()
             case 'Filter':
@@ -452,6 +423,8 @@ class ExamTreeview(Gtk.TreeView):
                 self.view_exam()
             case 'Return':
                 self.view_exam()
+            case 'd':
+                self.delete_exam()
             case 'e':
                 self.evaluate_exam()
             case 'f':
