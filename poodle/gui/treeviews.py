@@ -13,7 +13,7 @@ import pandas as pd
 
 class QuestionTreeview(Gtk.TreeView):
     """
-    Dependencies: Gtk, Gdk, config, gui.windows, re, numpy, pandas
+    Dependencies: Gtk, Gdk, config, gui.windows, gui.dialogs, re, numpy, pandas
     """
 
     def __init__(self, parent):
@@ -129,37 +129,16 @@ class QuestionTreeview(Gtk.TreeView):
 
         # Create ExamWindow if it doesn't exist already
         if not hasattr(self.parent_window, 'exam_window'):
-            # Placeholder attribute so that ExamWindow __init__ throws no error
-            self.parent_window.exam_window = None
-            # Ask for exam name
-            dialog = Gtk.MessageDialog(
-                transient_for=self.parent_window,
-                message_type=Gtk.MessageType.INFO,
-                buttons=Gtk.ButtonsType.OK_CANCEL,
-                text='Please enter exam name:'
-            )
-            box = dialog.get_message_area()
-            name_entry = Gtk.Entry()
-            box.pack_end(name_entry, True, True, 10)
-            box.show_all()
-            # Create exam or cancel
-            response = dialog.run()
-            if response == Gtk.ResponseType.OK:
-                exam_name = name_entry.get_text()
-                self.parent_window.exam_window = gui.windows.ExamWindow(
-                    self.parent_window, exam_name
-                )
-                self.parent_window.exam_window.show_all()
-                dialog.destroy()
-            elif response == Gtk.ResponseType.CANCEL:
-                dialog.destroy()
-                delattr(self.parent_window, 'exam_window')
+            dialog = gui.dialogs.NewExamDialog(self.parent_window)
+            exam_started = dialog._run()
+            # Exit function if CANCEL is pressed
+            if not exam_started:
                 return None
+
         # Add question name to exam window
         selected_row = self.get_selection()
         model, treeiter = selected_row.get_selected()
         question_name = model[treeiter][0]
-
         self.parent_window.exam_window.add_question(question_name)
 
     # Filter questions based on search defined in control panel
@@ -433,7 +412,7 @@ class ExamTreeview(Gtk.TreeView):
 
 class TableTreeView(Gtk.TreeView):
     """
-    Dependencies: Gtk, Gdk, gui.grids
+    Dependencies: Gtk, Gdk, gui.grids, gui.dialogs
     """
 
     def __init__(self, parent, table: list):
@@ -484,43 +463,8 @@ class TableTreeView(Gtk.TreeView):
 
     def edit_columns(self, button):
 
-        dialog = Gtk.MessageDialog(
-            transient_for=self.parent_window,
-            message_type=Gtk.MessageType.OTHER,
-            buttons=Gtk.ButtonsType.OK_CANCEL,
-            text='Edit columns below:'
-        )
-        # Grid of column titles
-        box = dialog.get_message_area()
-        column_titles = [x.get_title() for x in self.get_columns()]
-        column_grid = gui.grids.TableColumnGrid(self.parent_window, column_titles)
-        box.pack_end(column_grid, True, True, 10)
-        box.show_all()
-        response = dialog.run()
-        if response == Gtk.ResponseType.OK:
-            # Create new table
-            new_table = []
-            # Columns
-            new_table.append(
-                list(reversed(
-                    [x.get_text() for x in column_grid.get_children()
-                     if type(x) == Gtk.Entry]
-                     ))
-                )
-            # Rows
-            self.liststore.foreach(self.insert_rows, new_table)
-            # Fill in potentially missing values due to added columns
-            max_cols = max([len(x) for x in new_table])
-            new_table = [x + [''] * (max_cols - len(x)) for x in new_table]
-            # Remove old table from parent window and rebuild
-            self.parent_window.scroll_window.remove(self)
-            for c in self.get_columns():
-                self.remove_column(c)
-            self.build_table(new_table)
-            self.parent_window.scroll_window.add(self)
-        elif response == Gtk.ResponseType.CANCEL:
-            pass
-        dialog.destroy()
+        dialog = gui.dialogs.EditColumnsDialog(self.parent_window, self)
+        dialog._run()
 
     def add_row(self, button):
 

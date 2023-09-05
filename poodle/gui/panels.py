@@ -5,6 +5,7 @@ from gi.repository import Gtk
 # Poodle Modules
 from poodle import question
 from poodle import config
+import gui.dialogs
 # Other modules
 import json
 import ast
@@ -114,7 +115,7 @@ class MainExamControlPanel(Gtk.ActionBar):
 
 class QuestionControlPanel(Gtk.ActionBar):
     """
-    Dependencies: Gtk, json, question, config
+    Dependencies: Gtk, json, question, config, gui.dialogs
     """
 
     def __init__(self, parent):
@@ -133,81 +134,53 @@ class QuestionControlPanel(Gtk.ActionBar):
         self.pack_end(self.delete_button)
 
     # Initialized every time save button is clicked
-    def check_question_dialog(self, question_content: dict):
+    def check_question(self, page):
 
         check_result = question.check_question(json.dumps(
-            self.page.content, ensure_ascii=False
+            page.content, ensure_ascii=False
         ), ignore_duplicates=True)
         if check_result:
-            check_result.pop('__question_name__')
-            dialog = Gtk.MessageDialog(
-                transient_for=self.parent_window,
-                message_type=Gtk.MessageType.INFO,
-                buttons=Gtk.ButtonsType.OK,
-                text=f'{self.page.content["name"]} has formatting errors:'
+            dialog = gui.dialogs.CheckQuestionDialog(
+                self.parent_window, page, check_result
             )
-            dialog.format_secondary_text(
-                json.dumps(check_result, ensure_ascii=False, indent=4)
-            )
-            dialog.run()
-            dialog.destroy()
-            return check_result
-        else:
-            return None
+            return dialog._run()
 
     def on_save_clicked(self, button) -> None:
 
-        def save_question() -> None:
-            dialog = Gtk.MessageDialog(
-                transient_for=self.parent_window,
-                message_type=Gtk.MessageType.INFO,
-                buttons=Gtk.ButtonsType.YES_NO,
-                text=f'Are you sure you want to save {self.page.content["name"]}?'
+        def save_question(page) -> None:
+            dialog = gui.dialogs.YesNoDialog(
+                self.parent_window,
+                f'Are you sure you want to save {page.content["name"]}?'
             )
-            dialog.format_secondary_text('')
-            response = dialog.run()
-            if response == Gtk.ResponseType.YES:
+            answered_yes = dialog._run()
+            if answered_yes:
                 # Check question for correct formatting
-                check_result = self.check_question_dialog(self.page.content)
+                check_result = self.check_question(page)
                 # Update database if question contains no errors
                 if not check_result:
-                    config.QUESTIONS.insert_one(self.page.content)
-                    # Update QuestionTreeview
-                    self.table.question_liststore.clear()
-                    for c in self.table.get_columns():
-                        self.table.remove_column(c)
-                    self.table.build_table(*self.table.load_data())
-            elif response == Gtk.ResponseType.NO:
-                pass
-            dialog.destroy()
+                    config.QUESTIONS.insert_one(page.content)
+                    # Update questions and exams
+                    self.overview.update_tables()
 
-        def overwrite_question() -> None:
-            dialog = Gtk.MessageDialog(
-                transient_for=self.parent_window,
-                message_type=Gtk.MessageType.INFO,
-                buttons=Gtk.ButtonsType.YES_NO,
-                text=f'Are you sure you want to overwrite {self.page.content["name"]}?'
+        def overwrite_question(page) -> None:
+            dialog = gui.dialogs.YesNoDialog(
+                self.parent_window,
+                f'Are you sure you want to overwrite {page.content["name"]}?',
+                'Changes are irreversible!'
             )
-            dialog.format_secondary_text('Changes are irreversible!')
-            response = dialog.run()
-            if response == Gtk.ResponseType.YES:
+            answered_yes = dialog._run()
+            if answered_yes:
                 # Check question for correct formatting
-                check_result = self.check_question_dialog(self.page.content)
+                check_result = self.check_question(page)
                 # Update database if question contains no errors
                 if not check_result:
-                    for k, v in self.page.content.items():
+                    for k, v in page.content.items():
                         config.QUESTIONS.find_one_and_update(
-                            {'name': self.page.content['name']},
+                            {'name': page.content['name']},
                             {'$set': {k: v}}
                         )
-                    # Update QuestionTreeview
-                    self.table.question_liststore.clear()
-                    for c in self.table.get_columns():
-                        self.table.remove_column(c)
-                    self.table.build_table(*self.table.load_data())
-            elif response == Gtk.ResponseType.NO:
-                pass
-            dialog.destroy()
+                    # Update questions and exams
+                    self.overview.update_tables()
 
         self.page = self.parent_window.notebook.get_nth_page(
             self.parent_window.notebook.get_current_page()
@@ -220,25 +193,21 @@ class QuestionControlPanel(Gtk.ActionBar):
         try:
             db_question.pop('_id')
             if self.page.content == db_question:
-                dialog = Gtk.MessageDialog(
-                    transient_for=self.parent_window,
-                    message_type=Gtk.MessageType.INFO,
-                    buttons=Gtk.ButtonsType.OK,
-                    text=f'Nothing to save.'
+                dialog = gui.dialogs.OKDialog(
+                    self.parent_window,
+                    'Nothing to save.',
+                    f'No changes were made to {question_name}.'
                 )
-                dialog.format_secondary_text('No changes were made to ' +
-                                             f'{question_name}.')
-                dialog.run()
-                dialog.destroy()
+                dialog._run()
                 return None
         # When db_question == None
         except AttributeError:
             pass
         # Check if question already exists in database
         if not db_question:
-            save_question()
+            save_question(self.page)
         else:
-            overwrite_question()
+            overwrite_question(self.page)
 
     def on_delete_clicked(self, button) -> None:
 
@@ -252,38 +221,26 @@ class QuestionControlPanel(Gtk.ActionBar):
 
         # Check if question is in DB
         if not db_question:
-            dialog = Gtk.MessageDialog(
-                    transient_for=self.parent_window,
-                    message_type=Gtk.MessageType.INFO,
-                    buttons=Gtk.ButtonsType.OK,
-                    text=f'Nothing to delete.'
-                )
-            dialog.format_secondary_text(f'{question_name} ' +
-                                         "doesn't exist in database!")
-            dialog.run()
-            dialog.destroy()
+            dialog = gui.dialogs.OKDialog(
+                self.parent_window,
+                'Nothing to delete.',
+                f"{question_name} doesn't exist in database!"
+            )
+            dialog._run()
             return None
         else:
-            dialog = Gtk.MessageDialog(
-                transient_for=self.parent_window,
-                message_type=Gtk.MessageType.INFO,
-                buttons=Gtk.ButtonsType.YES_NO,
-                text=f'Are you sure you want to delete {question_name}?'
+            dialog = gui.dialogs.YesNoDialog(
+                self.parent_window,
+                f'Are you sure you want to delete {question_name}?',
+                'Changes are irreversible!'
             )
-            dialog.format_secondary_text('Changes are irreversible!')
-            response = dialog.run()
-            if response == Gtk.ResponseType.YES:
+            answered_yes = dialog._run()
+            if answered_yes:
                 config.QUESTIONS.delete_one({'name': question_name})
-                # Update QuestionTreeview
-                self.table.question_liststore.clear()
-                for c in self.table.get_columns():
-                    self.table.remove_column(c)
-                self.table.build_table(*self.table.load_data())
+                # Update questions and exams
+                self.overview.update_tables()
                 # Close question window
-                dialog.destroy()
                 self.parent_window.destroy()
-            elif response == Gtk.ResponseType.NO:
-                dialog.destroy()
 
 
 class TableControlPanel(Gtk.ActionBar):
@@ -316,7 +273,7 @@ class TableControlPanel(Gtk.ActionBar):
 
 class VariableControlPanel(Gtk.ActionBar):
     """
-    Dependencies: Gtk, config, ast, re
+    Dependencies: Gtk, gui.dialogs, config, ast, re
     """
 
     def __init__(self, parent):
@@ -367,14 +324,11 @@ class VariableControlPanel(Gtk.ActionBar):
         if passed:
             with open(self.path, 'w') as wf:
                 wf.write(code)
-            dialog = Gtk.MessageDialog(
-                transient_for=self.parent_window,
-                message_type=Gtk.MessageType.INFO,
-                buttons=Gtk.ButtonsType.OK,
-                text='File successfully saved.'
+            dialog = gui.dialogs.OKDialog(
+                self.parent_window,
+                'File successfully saved.'
             )
-            dialog.run()
-            dialog.destroy()
+            dialog._run()
 
     def parse_file(self, button, silent: bool = True) -> bool:
 
@@ -389,30 +343,22 @@ class VariableControlPanel(Gtk.ActionBar):
             ast.parse(code)
         except SyntaxError as e:
             line_number = re.search(r'\d+(?=\))', str(e)).group(0)
-            dialog = Gtk.MessageDialog(
-                transient_for=self.parent_window,
-                message_type=Gtk.MessageType.WARNING,
-                buttons=Gtk.ButtonsType.OK,
-                text=f'Syntax error found at line {line_number}!'
+            dialog = gui.dialogs.OKDialog(
+                self.parent_window,
+                f'Syntax error found at line {line_number}!'
             )
-            dialog.run()
-            dialog.destroy()
+            dialog._run()
 
             return False
 
         # Display success message
         if not silent:
-            dialog = Gtk.MessageDialog(
-                transient_for=self.parent_window,
-                message_type=Gtk.MessageType.INFO,
-                buttons=Gtk.ButtonsType.OK,
-                text='Syntax check successfully passed.'
-            )
-            dialog.format_secondary_text(
+            dialog = gui.dialogs.OKDialog(
+                self.parent_window,
+                'Syntax check successfully passed.',
                 '(This does not guarantee succesful compilation!)'
             )
-            dialog.run()
-            dialog.destroy()
+            dialog._run()
 
         return True
 
