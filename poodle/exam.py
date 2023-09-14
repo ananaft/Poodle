@@ -8,7 +8,7 @@ import numpy as np
 import json
 
 
-def create_exam(exam, filename='import.xml', mode='terminal', questions=None):
+def create_exam(exam, filename='import.xml', mode='terminal', questions=None, message=True):
     """
     Creates an xml file out of questions within the database. While using this
     function the user will be asked whether they want to use automatic or manual
@@ -52,12 +52,14 @@ def create_exam(exam, filename='import.xml', mode='terminal', questions=None):
             {'name': q}, {'$set': {f'in_exams.{exam}': np.nan}}
         )
 
-    print((
-        f'\nTotal points: {info[2]}\n'
-        f'Average difficulty: {info[1]}\n'
-        f'Estimated time: {info[0]} minutes\n'
-    ))
-    print('Database updated.')
+    # Final report
+    if message:
+        print((
+            f'\nTotal points: {info[2]}\n'
+            f'Average difficulty: {info[1]}\n'
+            f'Estimated time: {info[0]} minutes\n'
+        ))
+        print('Database updated.')
 
 
 def create_testexam(exam, filename='import.xml'):
@@ -89,7 +91,7 @@ def create_testexam(exam, filename='import.xml'):
     print('Test exam successfully created.')
     
 
-def remove_exam(exam):
+def remove_exam(exam, message=True):
     """
     Remove an exam from the database. This will remove the exam's document from
     the exams collection, as well as all entries of this exam within the
@@ -108,8 +110,11 @@ def remove_exam(exam):
     updates = QUESTIONS.update_many(
         {'_id': {'$type': 7}}, {'$unset': {f'in_exams.{exam}': ''}}
     )
-    print(f'{deletion.deleted_count} document(s) have been removed from the exams collection.\n' +
-          f'{updates.modified_count} question(s) have been updated.')
+    # Final report
+    if message:
+        print(f'{deletion.deleted_count} document(s) have been removed ' +
+              'from the exams collection.\n' +
+              f'{updates.modified_count} question(s) have been updated.')
 
 
 def evaluate_exam(exam_name, stats_file, ratings_file):

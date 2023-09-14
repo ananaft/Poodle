@@ -6,16 +6,16 @@ from gi.repository import Gtk
 import json
 
 
-class RawQuestionText(Gtk.TextView):
+class RawText(Gtk.TextView):
     """
     Dependencies: Gtk, json
     """
 
-    def __init__(self, question_content: dict):
+    def __init__(self, content: dict):
 
         super().__init__(wrap_mode=Gtk.WrapMode(3))
 
-        self.content = question_content
+        self.content = content
 
         self.textbuffer = self.get_buffer()
         self.textbuffer.set_text(json.dumps(self.content,
@@ -33,10 +33,10 @@ class RawQuestionText(Gtk.TextView):
 
         return self.content
 
-    def overwrite(self, question_content: dict):
+    def overwrite(self, content: dict):
 
-        self.content = question_content
+        self.content = content
 
         self.textbuffer.set_text(
-            json.dumps(question_content, ensure_ascii=False, indent=4)
+            json.dumps(content, ensure_ascii=False, indent=4)
         )

@@ -5,6 +5,8 @@ from gi.repository import Gtk
 # Poodle modules
 import gui.windows
 from poodle import config
+# Other modules
+import numpy as np
 
 
 class GeneralQuestionGrid(Gtk.Grid):
@@ -12,7 +14,7 @@ class GeneralQuestionGrid(Gtk.Grid):
     Dependencies: Gtk, gui.windows, config
     """
 
-    def __init__(self, parent, question_content: dict):
+    def __init__(self, parent: Gtk.Window, question_content: dict):
 
         super().__init__()
         self.set_column_spacing(100)
@@ -211,7 +213,6 @@ class GeneralQuestionGrid(Gtk.Grid):
     def update_content(self) -> dict:
 
         def get_field_content(field_child):
-
             match field_child.__class__.__name__:
                 case Gtk.TextView.__name__:
                     textbuffer = field_child.get_buffer()
@@ -295,7 +296,7 @@ class MultiChoiceQuestionGrid(GeneralQuestionGrid):
     Dependencies: Gtk
     """
 
-    def __init__(self, parent, question_content: dict):
+    def __init__(self, parent: Gtk.Window, question_content: dict):
 
         super().__init__(parent, question_content)
 
@@ -350,7 +351,7 @@ class NumericalQuestionGrid(GeneralQuestionGrid):
     Dependencies: Gtk
     """
 
-    def __init__(self, parent, question_content: dict):
+    def __init__(self, parent: Gtk.Window, question_content: dict):
 
         super().__init__(parent, question_content)
 
@@ -393,7 +394,7 @@ class ShortanswerQuestionGrid(GeneralQuestionGrid):
     Dependencies: Gtk
     """
 
-    def __init__(self, parent, question_content: dict):
+    def __init__(self, parent: Gtk.Window, question_content: dict):
 
         super().__init__(parent, question_content)
 
@@ -436,7 +437,7 @@ class EssayQuestionGrid(GeneralQuestionGrid):
     Dependencies: Gtk
     """
 
-    def __init__(self, parent, question_content: dict):
+    def __init__(self, parent: Gtk.Window, question_content: dict):
 
         super().__init__(parent, question_content)
 
@@ -467,7 +468,7 @@ class MatchingQuestionGrid(GeneralQuestionGrid):
     Dependencies: Gtk
     """
 
-    def __init__(self, parent, question_content: dict):
+    def __init__(self, parent: Gtk.Window, question_content: dict):
 
         super().__init__(parent, question_content)
 
@@ -510,7 +511,7 @@ class GapselectQuestionGrid(GeneralQuestionGrid):
     Dependencies: Gtk
     """
 
-    def __init__(self, parent, question_content: dict):
+    def __init__(self, parent: Gtk.Window, question_content: dict):
 
         super().__init__(parent, question_content)
 
@@ -553,7 +554,7 @@ class DDImageOrTextQuestionGrid(GeneralQuestionGrid):
     Dependencies: Gtk
     """
 
-    def __init__(self, parent, question_content: dict):
+    def __init__(self, parent: Gtk.Window, question_content: dict):
 
         super().__init__(parent, question_content)
 
@@ -597,7 +598,7 @@ class CalculatedQuestionGrid(GeneralQuestionGrid):
     Dependencies: Gtk, gui.windows
     """
 
-    def __init__(self, parent, question_content: dict):
+    def __init__(self, parent: Gtk.Window, question_content: dict):
 
         super().__init__(parent, question_content)
 
@@ -802,7 +803,7 @@ class SimpleDictGrid(Gtk.Grid):
 
     def overwrite(self, input_dict: dict):
 
-        child_list = self.get_children()[1:]
+        child_list = [c for c in self.get_children() if type(c) != Gtk.Button]
         key_pairs = zip(
             input_dict.keys(),
             reversed(child_list[len(child_list)//2:])
@@ -893,7 +894,9 @@ class DictListGrid(Gtk.Grid):
 
     def overwrite(self, input_dict: dict):
 
-        child_list = list(reversed(self.get_children()[1:]))
+        child_list = list(reversed(
+            [c for c in self.get_children() if type(c) != Gtk.Button]
+        ))
         key_pairs = zip(
             input_dict.keys(),
             child_list[::2]
@@ -919,7 +922,7 @@ class DictButtonGrid(Gtk.Grid):
     """
 
     def __init__(
-        self, parent, button_label: str, fn, arguments: tuple,
+        self, parent: Gtk.Window, button_label: str, fn, arguments: tuple,
         dict_field: dict, dict_editable: bool = True, key_default: str = '',
         dict_add: bool = True,
     ):
@@ -996,7 +999,7 @@ class TableColumnGrid(Gtk.Grid):
     Dependencies: Gtk
     """
 
-    def __init__(self, parent, column_titles: list):
+    def __init__(self, parent: Gtk.Window, column_titles: list):
 
         super().__init__()
         self.parent_window = parent
@@ -1033,3 +1036,194 @@ class TableColumnGrid(Gtk.Grid):
             child = self.get_child_at(0, self.n_rows - 1)
             self.remove(child)
             self.n_rows -= 1
+
+
+class ExamGrid(Gtk.Grid):
+    """
+    Dependencies: Gtk, config, numpy
+    """
+
+    def __init__(self, parent: Gtk.Window, exam_content: dict):
+
+        super().__init__()
+        self.set_column_spacing(100)
+        self.set_row_spacing(20)
+        self.parent_window = parent
+
+        self.content = exam_content
+
+        self.name_label = Gtk.Label(label='name')
+        self.attach(self.name_label, 0, 0, 1, 1)
+
+        self.name_field = Gtk.Entry()
+        self.name_field.set_property('name', 'name')
+        self.name_field.set_hexpand(True)
+        self.name_field.set_text(self.content['name'])
+        self.name_field.set_editable(False)
+        self.attach_next_to(self.name_field,
+                            self.name_label,
+                            Gtk.PositionType.RIGHT, 2, 1)
+
+        self.points_max_label = Gtk.Label(label='points_max')
+        self.attach(self.points_max_label, 0, 1, 1, 1)
+
+        self.points_max_field = Gtk.Entry()
+        self.points_max_field.set_property('name', 'points_max')
+        self.points_max_field.set_hexpand(True)
+        self.points_max_field.set_text(str(self.content['points_max']))
+        self.points_max_field.set_editable(False)
+        self.attach_next_to(self.points_max_field,
+                            self.points_max_label,
+                            Gtk.PositionType.RIGHT, 2, 1)
+
+        self.points_avg_label = Gtk.Label(label='points_avg')
+        self.attach(self.points_avg_label, 0, 2, 1, 1)
+
+        self.points_avg_field = Gtk.Entry()
+        self.points_avg_field.set_property('name', 'points_avg')
+        self.points_avg_field.set_hexpand(True)
+        self.points_avg_field.set_text(str(self.calc_points_avg(exam_content)))
+        self.points_avg_field.set_editable(False)
+        self.attach_next_to(self.points_avg_field,
+                            self.points_avg_label,
+                            Gtk.PositionType.RIGHT, 2, 1)
+
+        self.n_questions_label = Gtk.Label(label='n_questions')
+        self.attach(self.n_questions_label, 0, 3, 1, 1)
+
+        self.n_questions_field = Gtk.Entry()
+        self.n_questions_field.set_property('name', 'n_questions')
+        self.n_questions_field.set_hexpand(True)
+        self.n_questions_field.set_text(str(len(exam_content['questions'])))
+        self.n_questions_field.set_editable(False)
+        self.attach_next_to(self.n_questions_field,
+                            self.n_questions_label,
+                            Gtk.PositionType.RIGHT, 2, 1)
+
+        self.difficulty_avg_label = Gtk.Label(label='difficulty_avg')
+        self.attach(self.difficulty_avg_label, 0, 4, 1, 1)
+
+        self.difficulty_avg_field = Gtk.Entry()
+        self.difficulty_avg_field.set_property('name', 'difficulty_avg')
+        self.difficulty_avg_field.set_hexpand(True)
+        self.difficulty_avg_field.set_text(str(exam_content['difficulty_avg']))
+        self.difficulty_avg_field.set_editable(False)
+        self.attach_next_to(self.difficulty_avg_field,
+                            self.difficulty_avg_label,
+                            Gtk.PositionType.RIGHT, 2, 1)
+
+        self.time_est_label = Gtk.Label(label='time_est')
+        self.attach(self.time_est_label, 0, 5, 1, 1)
+
+        self.time_est_field = Gtk.Entry()
+        self.time_est_field.set_property('name', 'time_est')
+        self.time_est_field.set_hexpand(True)
+        self.time_est_field.set_text(str(exam_content['time_est']))
+        self.time_est_field.set_editable(False)
+        self.attach_next_to(self.time_est_field,
+                            self.time_est_label,
+                            Gtk.PositionType.RIGHT, 2, 1)
+
+        self.questions_label = Gtk.Label(label='questions')
+        self.attach(self.questions_label, 0, 6, 1, 1)
+        # Evaluated exams cannot be edited
+        if 'questions_avgs' in exam_content:
+            self.questions_field = SimpleDictGrid(
+                exam_content['questions_avgs'],
+                editable=False, add=False, output_type=float
+            )
+            self.questions_field.set_property('name', 'questions')
+            self.attach_next_to(self.questions_field,
+                                self.questions_label,
+                                Gtk.PositionType.RIGHT, 2, 1)
+        else:
+            self.questions_field = SimpleListGrid(exam_content['questions'])
+            self.questions_field.set_property('name', 'questions')
+            self.attach_next_to(self.questions_field,
+                                self.questions_label,
+                                Gtk.PositionType.RIGHT, 2, 1)
+
+    # self.content needs to be updated when page is switched
+    def update_content(self) -> dict:
+
+        def get_field_content(field_child):
+            match field_child.__class__.__name__:
+                case Gtk.TextView.__name__:
+                    textbuffer = field_child.get_buffer()
+                    text = textbuffer.get_text(
+                        textbuffer.get_start_iter(),
+                        textbuffer.get_end_iter(),
+                        include_hidden_chars=True
+                    )
+                    return text
+                case SimpleListGrid.__name__:
+                    return field_child.get_content()
+                case SimpleDictGrid.__name__:
+                    return field_child.get_content()
+                case DictListGrid.__name__:
+                    return field_child.get_content()
+                case DictButtonGrid.__name__:
+                    return field_child.get_content()
+                case _:
+                    raise Exception
+
+        # Create label/field pairs from children
+        child_pairs = list(zip(
+            [x for x in self.get_children() if type(x) != Gtk.Button][1::2],
+            [x for x in self.get_children() if type(x) != Gtk.Button][0::2]
+        ))
+        # Update self.content dict
+        for i in child_pairs:
+            # Preserve original data types of entry fields
+            if type(i[1]) == Gtk.Entry:
+                original_type = config.EXAM_TYPES[i[0].get_property('label')]
+                self.content[i[0].get_property('label')] = original_type(i[1].get_text())
+            else:
+                self.content[i[0].get_property('label')] = get_field_content(i[1])
+
+        return self.content
+
+    def overwrite(self, exam_content: dict):
+
+        self.content = exam_content
+
+        for k, v in exam_content.items():
+
+            # Get each child according to passed dictionary
+            try:
+                child = list(filter(
+                    lambda x: (x.get_property('name') == k), self.get_children()
+                ))[0]
+            except IndexError:
+                child = 'Ignore key'
+
+            # Overwrite child according to class
+            match child.__class__.__name__:
+                case Gtk.Entry.__name__:
+                    child.set_text(str(v))
+                case Gtk.TextView.__name__:
+                    child.get_buffer().set_text(str(v))
+                case SimpleListGrid.__name__:
+                    child.overwrite(v)
+                case SimpleDictGrid.__name__:
+                    child.overwrite(v)
+                case DictListGrid.__name__:
+                    child.overwrite(v)
+                case DictButtonGrid.__name__:
+                    child.overwrite(v)
+                case str.__name__:
+                    pass
+                case _:
+                    raise Exception
+
+    def calc_points_avg(self, exam_content: dict) -> float:
+
+        try:
+            avg = np.round(np.nansum([
+                x[1] * config.QUESTIONS.find_one({'name': x[0]})['points']
+                for x in exam_content['questions_avgs'].items()
+            ]), 2)
+        except KeyError:
+            avg = 0.0
+
+        return avg

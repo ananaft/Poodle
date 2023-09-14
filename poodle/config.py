@@ -85,7 +85,7 @@ Q_CATEGORIES, SHUFFLE, RANDOM_ARR_SIZE = apply_config()
 KEY_TYPES = {
     'general': {
         'name': str, 'question': str, 'family_type': str, 'moodle_type': str,
-        'points': int, 'in_exams': dict, 'time_est': int, 'difficulty': int
+        'points': float, 'in_exams': dict, 'time_est': int, 'difficulty': int
     },
     'optional': {
         'img_files': list, 'tables': dict
@@ -115,4 +115,9 @@ KEY_TYPES = {
     'calculated': {
         'correct_answers': list, 'tolerance': list, 'vars': list
     }
+}
+# Expected value types for exam keys
+EXAM_TYPES = {
+    'name': str, 'points_max': float, 'points_avg': float, 'n_questions': int,
+    'difficulty_avg': float, 'time_est': int, 'questions': (list, dict)
 }

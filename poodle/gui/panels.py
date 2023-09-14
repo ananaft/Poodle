@@ -5,6 +5,7 @@ from gi.repository import Gtk
 # Poodle Modules
 from poodle import question
 from poodle import config
+from poodle import exam
 import gui.dialogs
 # Other modules
 import json
@@ -17,7 +18,7 @@ class MainQuestionControlPanel(Gtk.ActionBar):
     Dependencies: Gtk
     """
 
-    def __init__(self, parent):
+    def __init__(self, parent: Gtk.Window):
 
         super().__init__()
         self.parent_window = parent
@@ -68,7 +69,7 @@ class MainExamControlPanel(Gtk.ActionBar):
     Dependencies: Gtk
     """
 
-    def __init__(self, parent):
+    def __init__(self, parent: Gtk.Window):
 
         super().__init__()
         self.parent_window = parent
@@ -118,12 +119,11 @@ class QuestionControlPanel(Gtk.ActionBar):
     Dependencies: Gtk, json, question, config, gui.dialogs
     """
 
-    def __init__(self, parent):
+    def __init__(self, parent: Gtk.Window):
 
         super().__init__()
         self.parent_window = parent
-        self.overview = self.parent_window.parent_window
-        self.table = self.overview.notebook.question_table
+        self.main_window = self.parent_window.parent_window
 
         self.save_button = Gtk.Button(label='Save')
         self.save_button.connect('clicked', self.on_save_clicked)
@@ -160,7 +160,7 @@ class QuestionControlPanel(Gtk.ActionBar):
                 if not check_result:
                     config.QUESTIONS.insert_one(page.content)
                     # Update questions and exams
-                    self.overview.update_tables()
+                    self.main_window.update_tables()
 
         def overwrite_question(page) -> None:
             dialog = gui.dialogs.YesNoDialog(
@@ -180,11 +180,18 @@ class QuestionControlPanel(Gtk.ActionBar):
                             {'$set': {k: v}}
                         )
                     # Update questions and exams
-                    self.overview.update_tables()
+                    self.main_window.update_tables()
 
-        self.page = self.parent_window.notebook.get_nth_page(
-            self.parent_window.notebook.get_current_page()
-        )
+        # Gtk.ScrolledWindow inserts Gtk.ViewPort as parent of Gtk.Grid
+        # IndexError happens when RawText is child of Gtk.ScrolledWindow
+        try:
+            self.page = self.parent_window.notebook.get_nth_page(
+                self.parent_window.notebook.get_current_page()
+            ).get_children()[0].get_children()[0]
+        except IndexError:
+            self.page = self.parent_window.notebook.get_nth_page(
+                self.parent_window.notebook.get_current_page()
+            ).get_children()[0]
         new_content = self.page.update_content()
         self.page.overwrite(new_content)
         question_name = self.page.content['name']
@@ -211,9 +218,16 @@ class QuestionControlPanel(Gtk.ActionBar):
 
     def on_delete_clicked(self, button) -> None:
 
-        self.page = self.parent_window.notebook.get_nth_page(
-            self.parent_window.notebook.get_current_page()
-        )
+        # Gtk.ScrolledWindow inserts Gtk.ViewPort as parent of Gtk.Grid
+        # IndexError happens when RawText is child of Gtk.ScrolledWindow
+        try:
+            self.page = self.parent_window.notebook.get_nth_page(
+                self.parent_window.notebook.get_current_page()
+            ).get_children()[0].get_children()[0]
+        except IndexError:
+            self.page = self.parent_window.notebook.get_nth_page(
+                self.parent_window.notebook.get_current_page()
+            ).get_children()[0]
         new_content = self.page.update_content()
         self.page.overwrite(new_content)
         question_name = self.page.content['name']
@@ -238,7 +252,7 @@ class QuestionControlPanel(Gtk.ActionBar):
             if answered_yes:
                 config.QUESTIONS.delete_one({'name': question_name})
                 # Update questions and exams
-                self.overview.update_tables()
+                self.main_window.update_tables()
                 # Close question window
                 self.parent_window.destroy()
 
@@ -248,7 +262,7 @@ class TableControlPanel(Gtk.ActionBar):
     Dependencies: Gtk
     """
 
-    def __init__(self, parent):
+    def __init__(self, parent: Gtk.Window):
 
         super().__init__()
         self.parent_window = parent
@@ -276,7 +290,7 @@ class VariableControlPanel(Gtk.ActionBar):
     Dependencies: Gtk, gui.dialogs, config, ast, re
     """
 
-    def __init__(self, parent):
+    def __init__(self, parent: Gtk.Window):
 
         super().__init__()
         self.parent_window = parent
@@ -365,10 +379,149 @@ class VariableControlPanel(Gtk.ActionBar):
 
 class ExamControlPanel(Gtk.ActionBar):
     """
+    Dependencies: Gtk, exam, windows
+    """
+
+    def __init__(self, parent: Gtk.Window):
+
+        super().__init__()
+        self.parent_window = parent
+        self.main_window = self.parent_window.parent_window
+
+        self.save_button = Gtk.Button(label='Save')
+        self.save_button.connect('clicked', self.on_save_clicked)
+        self.pack_start(self.save_button)
+
+        self.delete_button = Gtk.Button(label='Delete')
+        self.delete_button.connect('clicked', self.on_delete_clicked)
+        self.pack_end(self.delete_button)
+
+    def on_save_clicked(self, button) -> None:
+
+        def save_exam(page) -> None:
+            dialog = gui.dialogs.YesNoDialog(
+                self.parent_window,
+                f'Are you sure you want to save {page.content["name"]}?'
+            )
+            answered_yes = dialog._run()
+            if answered_yes:
+                exam.create_exam(
+                    page.content['name'], mode='gui',
+                    questions=page.content['questions']
+                )
+                # Update questions and exams
+                self.main_window.update_tables()
+                # Reload current window
+                self.parent_window.destroy()
+                new_window = gui.windows.ExamWindow(
+                    self.parent_window.parent_window, page.content
+                )
+                new_window.show_all()
+
+        def overwrite_exam(page) -> None:
+            dialog = gui.dialogs.YesNoDialog(
+                self.parent_window,
+                f'Are you sure you want to overwrite {page.content["name"]}?',
+                'Changes are irreversible!'
+            )
+            answered_yes = dialog._run()
+            if answered_yes:
+                exam.remove_exam(page.content['name'], message=False)
+                exam.create_exam(
+                    page.content['name'], mode='gui',
+                    questions=page.content['questions'],
+                    message=False
+                )
+                # Update questions and exams
+                self.main_window.update_tables()
+                # Reload current window
+                self.parent_window.destroy()
+                new_window = gui.windows.ExamWindow(
+                    self.parent_window.parent_window, page.content
+                )
+                new_window.show_all()
+
+        # Gtk.ScrolledWindow inserts Gtk.ViewPort as parent of Gtk.Grid
+        # IndexError happens when RawText is child of Gtk.ScrolledWindow
+        try:
+            self.page = self.parent_window.notebook.get_nth_page(
+                self.parent_window.notebook.get_current_page()
+            ).get_children()[0].get_children()[0]
+        except IndexError:
+            self.page = self.parent_window.notebook.get_nth_page(
+                self.parent_window.notebook.get_current_page()
+            ).get_children()[0]
+        new_content = self.page.update_content()
+        self.page.overwrite(new_content)
+        exam_name = self.page.content['name']
+        # Check if any changes were made to exam
+        db_exam = config.EXAMS.find_one({'name': exam_name})
+        try:
+            db_exam.pop('_id')
+            if self.page.content == db_exam:
+                dialog = gui.dialogs.OKDialog(
+                    self.parent_window,
+                    'Nothing to save.',
+                    f'No changes were made to {question_name}.'
+                )
+                dialog._run()
+                return None
+        # When db_question == None
+        except AttributeError:
+            pass
+        # Check if question already exists in database
+        if not db_exam:
+            save_exam(self.page)
+        else:
+            overwrite_exam(self.page)
+
+    def on_delete_clicked(self, button) -> None:
+
+        # Gtk.ScrolledWindow inserts Gtk.ViewPort as parent of Gtk.Grid
+        # IndexError happens when RawText is child of Gtk.ScrolledWindow
+        try:
+            self.page = self.parent_window.notebook.get_nth_page(
+                self.parent_window.notebook.get_current_page()
+            ).get_children()[0].get_children()[0]
+        except IndexError:
+            self.page = self.parent_window.notebook.get_nth_page(
+                self.parent_window.notebook.get_current_page()
+            ).get_children()[0]
+        new_content = self.page.update_content()
+        self.page.overwrite(new_content)
+        exam_name = self.page.content['name']
+        db_exam = config.EXAMS.find_one({'name': exam_name})
+
+        # Check if exam is in DB
+        if not db_exam:
+            dialog = gui.dialogs.OKDialog(
+                self.parent_window,
+                'Nothing to delete.',
+                f"{exam_name} doesn't exist in database!"
+            )
+            dialog._run()
+            return None
+        else:
+            dialog = gui.dialogs.YesNoDialog(
+                self.parent_window,
+                f'Are you sure you want to delete {exam_name}?',
+                'Changes are irreversible!'
+            )
+            answered_yes = dialog._run()
+            if answered_yes:
+                exam.remove_exam(exam_name)
+                # Update questions and exams
+                self.main_window.update_tables()
+                # Close exam window
+                self.parent_window.destroy()
+
+
+class ExamCreationControlPanel(Gtk.ActionBar):
+    """
     Dependencies: Gtk
     """
 
-    def __init__(self, parent):
+    def __init__(self, parent: Gtk.Window):
 
         super().__init__()
         self.parent_window = parent

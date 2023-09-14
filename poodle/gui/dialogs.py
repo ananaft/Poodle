@@ -65,7 +65,7 @@ class YesNoDialog(Gtk.MessageDialog):
 
 class QuestionSelectionDialog(Gtk.MessageDialog):
     """
-    Called by: ExamWindow.create_exam()
+    Called by: ExamCreationWindow.create_exam()
 
     Dependencies: Gtk, exam
     """
@@ -78,7 +78,7 @@ class QuestionSelectionDialog(Gtk.MessageDialog):
             buttons=Gtk.ButtonsType.YES_NO,
             text=(
                 'Are you sure you want to create ' +
-                f'{self.exam_window.get_property("title")} with the current ' +
+                f'{exam_window.get_property("title")} with the current ' +
                 'question selection?'
             )
         )
@@ -106,7 +106,7 @@ class NewQuestionDialog(Gtk.MessageDialog):
     Dependencies: Gtk, config
     """
 
-    def __init__(self, parent):
+    def __init__(self, parent: Gtk.Window):
 
         super().__init__(
             transient_for=parent,
@@ -190,13 +190,13 @@ class NewExamDialog(Gtk.MessageDialog):
         self.box.show_all()
 
     def _run(self):
-        # Placeholder attribute so that ExamWindow __init__ throws no error
+        # Placeholder attribute so that ExamCreationWindow __init__ throws no error
         self.parent_window.exam_window = None
         # Create exam or cancel
         response = self.run()
         if response == Gtk.ResponseType.OK:
             self.exam_name = self.name_entry.get_text()
-            self.parent_window.exam_window = gui.windows.ExamWindow(
+            self.parent_window.exam_window = gui.windows.ExamCreationWindow(
                 self.parent_window, self.exam_name
             )
             self.parent_window.exam_window.show_all()

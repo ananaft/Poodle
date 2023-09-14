@@ -56,10 +56,10 @@ class MainWindow(Gtk.Window):
 
 class QuestionWindow(Gtk.Window):
     """
-    Dependencies: Gtk, gui.notebooks
+    Dependencies: Gtk, gui.notebooks, gui.panels
     """
 
-    def __init__(self, parent, question_content: dict):
+    def __init__(self, parent: Gtk.Window, question_content: dict):
 
         super().__init__(title=question_content['name'])
         self.set_size_request(1200, 800)
@@ -86,7 +86,7 @@ class TableWindow(Gtk.Window):
     Dependencies: Gtk, gui.treeviews, gui.panels
     """
 
-    def __init__(self, parent, table_name: str, table: list):
+    def __init__(self, parent: Gtk.Window, table_name: str, table: list):
 
         super().__init__(title=table_name)
         self.set_size_request(800, 600)
@@ -114,7 +114,7 @@ class VariableFileWindow(Gtk.Window):
     Dependencies: Gtk, gui.panels
     """
 
-    def __init__(self, parent, question_name: str, variables: list):
+    def __init__(self, parent: Gtk.Window, question_name: str, variables: list):
 
         super().__init__(title=question_name)
         self.set_size_request(800, 600)
@@ -142,10 +142,37 @@ class VariableFileWindow(Gtk.Window):
 
 class ExamWindow(Gtk.Window):
     """
+    Dependencies: Gtk, gui.notebooks, gui.panels
+    """
+
+    def __init__(self, parent: Gtk.Window, exam_content: dict):
+
+        super().__init__(title=exam_content['name'])
+        self.set_size_request(1200, 800)
+        self.parent_window = parent
+
+        self.grid = Gtk.Grid()
+        self.grid.set_column_homogeneous(True)
+        self.add(self.grid)
+
+        self.scroll_window = Gtk.ScrolledWindow()
+        self.scroll_window.set_vexpand(True)
+        self.notebook = gui.notebooks.ExamNotebook(self, exam_content)
+        self.scroll_window.add(self.notebook)
+
+        self.control = gui.panels.ExamControlPanel(self)
+
+        self.grid.attach(self.scroll_window, 0, 0, 1, 1)
+        self.grid.attach_next_to(self.control, self.scroll_window,
+                                 Gtk.PositionType.BOTTOM, 1, 1)
+
+
+class ExamCreationWindow(Gtk.Window):
+    """
     Dependencies: Gtk, gui.panels, gui.dialogs, config, exam
     """
 
-    def __init__(self, parent, exam_name: str):
+    def __init__(self, parent: Gtk.Window, exam_name: str):
 
         super().__init__(title=exam_name)
         self.set_size_request(700, 600)
@@ -169,7 +196,7 @@ class ExamWindow(Gtk.Window):
         self.textbuffer = self.text_view.get_buffer()
         self.scroll_window.add(self.text_view)
 
-        self.control = gui.panels.ExamControlPanel(self)
+        self.control = gui.panels.ExamCreationControlPanel(self)
 
         self.left_grid.attach(self.scroll_window, 0, 0, 1, 1)
         self.left_grid.attach_next_to(self.control, self.scroll_window,
@@ -302,7 +329,7 @@ class HTMLPreviewWindow(Gtk.Window):
     Dependencies: Gtk, WebKit2
     """
 
-    def __init__(self, parent, content):
+    def __init__(self, parent: Gtk.Window, content):
 
         super().__init__(title='HTML Preview')
         self.set_size_request(1050, 700)

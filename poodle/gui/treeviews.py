@@ -4,6 +4,8 @@ gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gdk
 # Poodle modules
 from poodle import config
+from poodle import question
+from poodle import exam
 import gui.windows
 # Other modules
 import re
@@ -13,10 +15,10 @@ import pandas as pd
 
 class QuestionTreeview(Gtk.TreeView):
     """
-    Dependencies: Gtk, Gdk, config, gui.windows, gui.dialogs, re, numpy, pandas
+    Dependencies: Gtk, Gdk, config, question, gui.windows, gui.dialogs, re, numpy, pandas
     """
 
-    def __init__(self, parent):
+    def __init__(self, parent: Gtk.Window):
 
         super().__init__()
         self.parent_window = parent
@@ -116,18 +118,34 @@ class QuestionTreeview(Gtk.TreeView):
         question_content = config.QUESTIONS.find_one({'name': question_name})
         question_content.pop('_id')
 
-        new_window = gui.windows.QuestionWindow(self.parent_window, question_content)
+        new_window = gui.windows.QuestionWindow(
+            self.parent_window, question_content
+        )
         new_window.show_all()
 
     # Remove selected question from database
     def delete_question(self) -> None:
 
-        return 0
+        # Get question name
+        selected_row = self.get_selection()
+        model, treeiter = selected_row.get_selected()
+        question_name = model[treeiter][0]
+        # Ask for confirmation
+        dialog = gui.dialogs.YesNoDialog(
+            self.parent_window,
+            f'Are you sure you want to delete question {question_name}?',
+            'Changes are irreversible!'
+        )
+        answered_yes = dialog._run()
+        # Remove question and update questions and exams
+        if answered_yes:
+            question.remove_question(question_name)
+            self.parent_window.update_tables()
 
     # Add questions to exam
     def add_to_exam(self) -> None:
 
-        # Create ExamWindow if it doesn't exist already
+        # Create ExamCreationWindow if it doesn't exist already
         if not hasattr(self.parent_window, 'exam_window'):
             dialog = gui.dialogs.NewExamDialog(self.parent_window)
             exam_started = dialog._run()
@@ -219,10 +237,10 @@ class QuestionTreeview(Gtk.TreeView):
 
 class ExamTreeview(Gtk.TreeView):
     """
-    Dependencies: Gtk, Gdk, config, gui.windows, re, numpy, pandas
+    Dependencies: Gtk, Gdk, config, exam, gui.windows, gui.dialogs, re, numpy, pandas
     """
 
-    def __init__(self, parent):
+    def __init__(self, parent: Gtk.Window):
 
         super().__init__()
         self.parent_window = parent
@@ -272,9 +290,11 @@ class ExamTreeview(Gtk.TreeView):
         for e in df['exam']:
             try:
                 exam = config.EXAMS.find_one({'name': e})
-                # print(exam)
-                # print(exam['question_avgs'].values())
-                exam_avg = np.nansum(list(exam['question_avgs'].values()))
+                # Get actual average instead of relative average score
+                exam_avg = np.round(np.nansum([
+                    x[1] * config.QUESTIONS.find_one({'name': x[0]})['points']
+                    for x in exam['questions_avgs'].items()
+                ]), 2)
                 points_avg.append(exam_avg)
             except KeyError:
                 exam_avg = 0.0
@@ -322,17 +342,48 @@ class ExamTreeview(Gtk.TreeView):
     # Create window for new exam
     def new_exam(self) -> None:
 
-        return 0
+        # Create ExamCreationWindow if it doesn't exist already
+        if not hasattr(self.parent_window, 'exam_window'):
+            dialog = gui.dialogs.NewExamDialog(self.parent_window)
+            dialog._run()
+        else:
+            dialog = gui.dialogs.OKDialog(
+                self.parent_window, 'Exam creation already in progress!'
+            )
+            dialog._run()
 
     # Show selected exam in new window
     def view_exam(self) -> None:
 
-        return 0
+        selected_row = self.get_selection()
+        model, treeiter = selected_row.get_selected()
+        exam_name = model[treeiter][0]
+        exam_content = config.EXAMS.find_one({'name': exam_name})
+        exam_content.pop('_id')
+
+        new_window = gui.windows.ExamWindow(
+            self.parent_window, exam_content
+        )
+        new_window.show_all()
 
     # Remove selected exam from database
     def delete_exam(self) -> None:
 
-        return 0
+        # Get exam name
+        selected_row = self.get_selection()
+        model, treeiter = selected_row.get_selected()
+        exam_name = model[treeiter][0]
+        # Ask for confirmation
+        dialog = gui.dialogs.YesNoDialog(
+            self.parent_window,
+            f'Are you sure you want to delete exam {exam_name}?',
+            'Changes are irreversible!'
+        )
+        answered_yes = dialog._run()
+        # Remove exam and update questions and exams
+        if answered_yes:
+            exam.remove_exam(exam_name)
+            self.parent_window.update_tables()
 
     # Evaluate selected exam
     def evaluate_exam(self) -> None:
@@ -415,7 +466,7 @@ class TableTreeView(Gtk.TreeView):
     Dependencies: Gtk, Gdk, gui.grids, gui.dialogs
     """
 
-    def __init__(self, parent, table: list):
+    def __init__(self, parent: Gtk.Window, table: list):
 
         super().__init__()
         self.parent_window = parent

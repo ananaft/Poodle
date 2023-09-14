@@ -14,7 +14,7 @@ class MainNotebook(Gtk.Notebook):
     Dependencies: Gtk, gui.treeviews, gui.panels
     """
 
-    def __init__(self, parent):
+    def __init__(self, parent: Gtk.Window):
 
         super().__init__()
         self.parent_window = parent
@@ -59,10 +59,14 @@ class QuestionNotebook(Gtk.Notebook):
     Dependencies: Gtk, gui.grids, gui.textviews
     """
 
-    def __init__(self, parent, question_content: dict):
+    def __init__(self, parent: Gtk.Window, question_content: dict):
 
         super().__init__()
         self.parent_window = parent
+
+        # Normal tab
+        self.question_window = Gtk.ScrolledWindow()
+        self.question_window.set_vexpand(True)
 
         match question_content['moodle_type']:
             case 'multichoice':
@@ -99,10 +103,16 @@ class QuestionNotebook(Gtk.Notebook):
                     )
             case _:
                 raise Exception
-        self.append_page(self.question_grid, Gtk.Label(label='Question'))
 
-        self.raw_page = gui.textviews.RawQuestionText(question_content)
-        self.append_page(self.raw_page, Gtk.Label(label='Raw'))
+        self.question_window.add(self.question_grid)
+        self.append_page(self.question_window, Gtk.Label(label='Question'))
+
+        # Raw tab
+        self.raw_window = Gtk.ScrolledWindow()
+        self.raw_window.set_vexpand(True)
+        self.raw_page = gui.textviews.RawText(question_content)
+        self.raw_window.add(self.raw_page)
+        self.append_page(self.raw_window, Gtk.Label(label='Raw'))
 
         self.connect('switch-page', self.on_switch_page)
         self.switch_counter = 0
@@ -115,7 +125,76 @@ class QuestionNotebook(Gtk.Notebook):
         if self.switch_counter > 0:
 
             # Update content of previous page and pass to new page
-            new_content = self.get_nth_page(int(not page_num)).update_content()
-            page.overwrite(new_content)
+            # Gtk.ScrolledWindow inserts Gtk.ViewPort as parent of Gtk.Grid
+            if page_titles[self.switch_counter % 2] == 'Question':
+                previous_page = self.get_nth_page(
+                    int(not page_num)
+                ).get_children()[0]
+                new_page = page.get_children()[0].get_children()[0]
+                new_content = previous_page.update_content()
+                new_page.overwrite(new_content)
+            else:
+                previous_page = self.get_nth_page(
+                    int(not page_num)
+                ).get_children()[0].get_children()[0]
+                new_page = page.get_children()[0]
+                new_content = previous_page.update_content()
+                new_page.overwrite(new_content)
+
+        self.switch_counter += 1
+
+
+class ExamNotebook(Gtk.Notebook):
+    """
+    Dependencies: Gtk, gui.grids, gui.textviews
+    """
+
+    def __init__(self, parent: Gtk.Window, exam_content: dict):
+
+        super().__init__()
+        self.parent_window = parent
+
+        # Normal tab
+        self.exam_window = Gtk.ScrolledWindow()
+        self.exam_window.set_vexpand(True)
+
+        self.exam_grid = gui.grids.ExamGrid(self.parent_window, exam_content)
+
+        self.exam_window.add(self.exam_grid)
+        self.append_page(self.exam_window, Gtk.Label(label='Exam'))
+
+        # Raw tab
+        self.raw_window = Gtk.ScrolledWindow()
+        self.raw_window.set_vexpand(True)
+        self.raw_page = gui.textviews.RawText(exam_content)
+        self.raw_window.add(self.raw_page)
+        self.append_page(self.raw_window, Gtk.Label(label='Raw'))
+
+        self.connect('switch-page', self.on_switch_page)
+        self.switch_counter = 0
+
+    # Passing data between pages on switch
+    def on_switch_page(self, notebook, page, page_num):
+
+        page_titles = ['Exam', 'Raw']
+
+        if self.switch_counter > 0:
+
+            # Update content of previous page and pass to new page
+            # Gtk.ScrolledWindow inserts Gtk.ViewPort as parent of Gtk.Grid
+            if page_titles[self.switch_counter % 2] == 'Exam':
+                previous_page = self.get_nth_page(
+                    int(not page_num)
+                ).get_children()[0]
+                new_page = page.get_children()[0].get_children()[0]
+                new_content = previous_page.update_content()
+                new_page.overwrite(new_content)
+            else:
+                previous_page = self.get_nth_page(
+                    int(not page_num)
+                ).get_children()[0].get_children()[0]
+                new_page = page.get_children()[0]
+                new_content = previous_page.update_content()
+                new_page.overwrite(new_content)
 
         self.switch_counter += 1
