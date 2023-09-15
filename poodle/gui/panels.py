@@ -533,3 +533,25 @@ class ExamCreationControlPanel(Gtk.ActionBar):
         self.update_report_button = Gtk.Button(label='Update report')
         self.update_report_button.connect('clicked', self.parent_window.update_report)
         self.pack_end(self.update_report_button)
+
+
+class ExamEvaluationControlPanel(Gtk.ActionBar):
+    """
+    Dependencies: Gtk
+    """
+
+    def __init__(self, parent: Gtk.Window):
+
+        super().__init__()
+        self.parent_window = parent
+
+        self.ok_button = Gtk.Button(label='OK')
+        self.ok_button.connect('clicked', self.parent_window.evaluate)
+        self.pack_start(self.ok_button)
+
+        self.cancel_button = Gtk.Button(label='Cancel')
+        self.cancel_button.connect('clicked', self._destroy)
+        self.pack_end(self.cancel_button)
+
+    def _destroy(self, button):
+        self.parent_window.destroy()

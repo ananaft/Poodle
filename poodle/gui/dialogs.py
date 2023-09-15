@@ -290,3 +290,32 @@ class CheckQuestionDialog(Gtk.MessageDialog):
         self.run()
         self.destroy()
         return self.check_result
+
+
+class EvaluationFilesDialog(Gtk.FileChooserDialog):
+    """
+    Dependencies: Gtk
+    """
+
+    def __init__(self, parent: Gtk.Window):
+
+        super().__init__(
+            transient_for=parent, parent=parent,
+            action=Gtk.FileChooserAction.OPEN
+        )
+        self.add_buttons(
+            Gtk.STOCK_CANCEL,
+            Gtk.ResponseType.CANCEL,
+            Gtk.STOCK_OPEN,
+            Gtk.ResponseType.OK
+        )
+
+    def _run(self):
+        response = self.run()
+        if response == Gtk.ResponseType.OK:
+            filename = self.get_filename()
+            self.destroy()
+            return filename
+        elif response == Gtk.ResponseType.CANCEL:
+            self.destroy()
+            return ''

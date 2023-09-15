@@ -388,7 +388,15 @@ class ExamTreeview(Gtk.TreeView):
     # Evaluate selected exam
     def evaluate_exam(self) -> None:
 
-        return 0
+        # Get exam name
+        selected_row = self.get_selection()
+        model, treeiter = selected_row.get_selected()
+        exam_name = model[treeiter][0]
+        # Open new window
+        new_window = gui.windows.ExamEvaluationWindow(
+            self.parent_window, exam_name
+        )
+        new_window.show_all()
 
     # Filter questions based on search defined in control panel
     def filter_exams(self, model, iterator, data):

@@ -324,6 +324,88 @@ class ExamCreationWindow(Gtk.Window):
         delattr(self.parent_window, 'exam_window')
 
 
+class ExamEvaluationWindow(Gtk.Window):
+    """
+    Dependencies: Gtk, gui.dialogs, exam.evaluate_exam
+    """
+
+    def __init__(self, parent: Gtk.Window, exam_name: str):
+
+        super().__init__()
+        self.set_size_request(555, 170)
+        self.parent_window = parent
+        self.exam_name = exam_name
+        # Top level grid
+        self.top_grid = Gtk.Grid()
+        self.top_grid.set_row_spacing(10)
+        self.add(self.top_grid)
+        # Lower level grid
+        self.grid = Gtk.Grid()
+        self.grid.set_column_spacing(10)
+        self.grid.set_row_spacing(10)
+        self.grid.set_column_homogeneous(False)
+
+        self.name_label = Gtk.Label(label='Exam name')
+        self.grid.attach(self.name_label, 0, 0, 1, 1)
+
+        self.name_field = Gtk.Entry()
+        self.name_field.set_text(exam_name)
+        self.name_field.set_editable(False)
+        self.grid.attach_next_to(self.name_field,
+                            self.name_label,
+                            Gtk.PositionType.RIGHT, 1, 1)
+
+        self.stats_label = Gtk.Label(label='Statistics')
+        self.grid.attach(self.stats_label, 0, 1, 1, 1)
+        
+        self.stats_field = Gtk.Entry()
+        self.grid.attach_next_to(self.stats_field,
+                                 self.stats_label,
+                                 Gtk.PositionType.RIGHT, 20, 1)
+
+        self.stats_button = Gtk.Button(label='Choose file')
+        self.stats_button.connect('clicked', self.on_choose_clicked,
+                                  self.stats_field)
+        self.grid.attach_next_to(self.stats_button,
+                                 self.stats_field,
+                                 Gtk.PositionType.RIGHT, 1, 1)
+
+        self.ratings_label = Gtk.Label(label='Ratings')
+        self.grid.attach(self.ratings_label, 0, 2, 1, 1)
+        
+        self.ratings_field = Gtk.Entry()
+        self.grid.attach_next_to(self.ratings_field,
+                                 self.ratings_label,
+                                 Gtk.PositionType.RIGHT, 20, 1)
+
+        self.ratings_button = Gtk.Button(label='Choose file')
+        self.ratings_button.connect('clicked', self.on_choose_clicked,
+                                  self.ratings_field)
+        self.grid.attach_next_to(self.ratings_button,
+                                 self.ratings_field,
+                                 Gtk.PositionType.RIGHT, 1, 1)
+
+        self.control = gui.panels.ExamEvaluationControlPanel(self)
+
+        # Arrange top level grid
+        self.top_grid.attach(self.grid, 0, 0, 1, 1)
+        self.top_grid.attach(self.control, 0, 1, 1, 1)
+
+    def on_choose_clicked(self, button, entry: Gtk.Entry) -> None:
+
+        dialog = gui.dialogs.EvaluationFilesDialog(self)
+        selected_file = dialog._run()
+        entry.set_text(selected_file)
+
+    def evaluate(self, button) -> None:
+
+        stats_file = self.stats_field.get_text()
+        ratings_file = self.ratings_field.get_text()
+
+        exam.evaluate_exam(self.exam_name, stats_file, ratings_file)
+        self.destroy()
+
+
 class HTMLPreviewWindow(Gtk.Window):
     """
     Dependencies: Gtk, WebKit2
