@@ -50,6 +50,14 @@ def check_question(json_string: str, ignore_duplicates: bool = False) -> dict:
             if k not in output.keys() and k in question.keys():
                 if type(question[k]) != v:
                     output[k] = f'Wrong data type. Expected: {v}'
+    # Check if certain values are zero
+    def check_zero(question: dict, fields: list, output: dict) -> None:
+        for f in fields:
+            if (
+                (type(question[f]) == int or type(question[f]) == float)
+                and question[f] <= 0
+            ):
+                output[f] = 'Value needs to be > 0'
     # Check if value is in possible set of limited options
     def check_in_options(input_obj, input_key: str, options: list, output: dict) -> None:
         if input_key not in output.keys():
@@ -73,6 +81,7 @@ def check_question(json_string: str, ignore_duplicates: bool = False) -> dict:
         check_missing(question, KEY_TYPES['general'], result_dict)
         check_empty(question, KEY_TYPES['general'], result_dict)
         check_type(question, KEY_TYPES['general'], result_dict)
+        check_zero(question, ['points', 'time_est', 'difficulty'], result_dict)
         # Check for correct naming scheme
         if Q_CATEGORIES and 'name' not in result_dict:
             if question['name'][:-4] not in Q_CATEGORIES:

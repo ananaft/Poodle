@@ -7,6 +7,9 @@ import gui.treeviews
 import gui.panels
 import gui.grids
 import gui.textviews
+# Other modules
+import json
+import re
 
 
 class MainNotebook(Gtk.Notebook):
@@ -56,7 +59,7 @@ class MainNotebook(Gtk.Notebook):
 
 class QuestionNotebook(Gtk.Notebook):
     """
-    Dependencies: Gtk, gui.grids, gui.textviews
+    Dependencies: Gtk, gui.grids, gui.textviews, gui.dialogs, json, re
     """
 
     def __init__(self, parent: Gtk.Window, question_content: dict):
@@ -131,7 +134,35 @@ class QuestionNotebook(Gtk.Notebook):
                     int(not page_num)
                 ).get_children()[0]
                 new_page = page.get_children()[0].get_children()[0]
-                new_content = previous_page.update_content()
+                # If Raw is edited in a way that invalidates JSON
+                # warn user and abort page switch
+                try:
+                    new_content = previous_page.update_content()
+                except json.decoder.JSONDecodeError as e:
+                    error_msg = e.args[0]
+                    dialog = gui.dialogs.OKDialog(
+                        self.parent_window,
+                        'Aborted switching page due to following error:',
+                        error_msg
+                    )
+                    dialog._run()
+                    self.stop_emission_by_name('switch-page')
+                    # Mark line that caused error
+                    if re.match("Expecting ',' delimiter", error_msg):
+                        error_chars = e.doc.splitlines()[e.lineno - 2]
+                    else:
+                        error_chars = e.doc.splitlines()[e.lineno - 1]
+                    textbuffer = previous_page.get_buffer()
+                    search_match = textbuffer.get_start_iter().forward_search(
+                        error_chars, 0, None
+                    )
+                    textbuffer.delete(search_match[0], search_match[1])
+                    textbuffer.insert_markup(
+                        search_match[0],
+                        f'<span color="red">{error_chars}</span>',
+                        -1
+                    )
+                    return 1
                 new_page.overwrite(new_content)
             else:
                 previous_page = self.get_nth_page(
@@ -146,7 +177,7 @@ class QuestionNotebook(Gtk.Notebook):
 
 class ExamNotebook(Gtk.Notebook):
     """
-    Dependencies: Gtk, gui.grids, gui.textviews
+    Dependencies: Gtk, gui.grids, gui.textviews, gui.dialogs, json, re
     """
 
     def __init__(self, parent: Gtk.Window, exam_content: dict):
@@ -187,7 +218,35 @@ class ExamNotebook(Gtk.Notebook):
                     int(not page_num)
                 ).get_children()[0]
                 new_page = page.get_children()[0].get_children()[0]
-                new_content = previous_page.update_content()
+                # If Raw is edited in a way that invalidates JSON
+                # warn user and abort page switch
+                try:
+                    new_content = previous_page.update_content()
+                except json.decoder.JSONDecodeError as e:
+                    error_msg = e.args[0]
+                    dialog = gui.dialogs.OKDialog(
+                        self.parent_window,
+                        'Aborted switching page due to following error:',
+                        error_msg
+                    )
+                    dialog._run()
+                    self.stop_emission_by_name('switch-page')
+                    # Mark line that caused error
+                    if re.match("Expecting ',' delimiter", error_msg):
+                        error_chars = e.doc.splitlines()[e.lineno - 2]
+                    else:
+                        error_chars = e.doc.splitlines()[e.lineno - 1]
+                    textbuffer = previous_page.get_buffer()
+                    search_match = textbuffer.get_start_iter().forward_search(
+                        error_chars, 0, None
+                    )
+                    textbuffer.delete(search_match[0], search_match[1])
+                    textbuffer.insert_markup(
+                        search_match[0],
+                        f'<span color="red">{error_chars}</span>',
+                        -1
+                    )
+                    return 1
                 new_page.overwrite(new_content)
             else:
                 previous_page = self.get_nth_page(
