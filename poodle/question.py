@@ -40,7 +40,7 @@ def check_question(json_string: str, ignore_duplicates: bool = False) -> dict:
         for k in keys.keys():
             if k not in output.keys() and k in question.keys():
                 try:
-                    if re.match(r'^$|\s+', question[k]):
+                    if re.match(r'^$|^\s+$', question[k]):
                         output[k] = 'Empty value'
                 except TypeError:
                     pass
@@ -51,13 +51,14 @@ def check_question(json_string: str, ignore_duplicates: bool = False) -> dict:
                 if type(question[k]) != v:
                     output[k] = f'Wrong data type. Expected: {v}'
     # Check if certain values are zero
-    def check_zero(question: dict, fields: list, output: dict) -> None:
-        for f in fields:
-            if (
-                (type(question[f]) == int or type(question[f]) == float)
-                and question[f] <= 0
-            ):
-                output[f] = 'Value needs to be > 0'
+    def check_zero(question: dict, keys: list, output: dict) -> None:
+        for k in keys:
+            if k not in output.keys() and k in question.keys():
+                if (
+                    (type(question[k]) == int or type(question[k]) == float)
+                    and question[k] <= 0
+                ):
+                    output[f] = 'Value needs to be > 0'
     # Check if value is in possible set of limited options
     def check_in_options(input_obj, input_key: str, options: list, output: dict) -> None:
         if input_key not in output.keys():

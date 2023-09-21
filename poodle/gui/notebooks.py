@@ -170,6 +170,9 @@ class QuestionNotebook(Gtk.Notebook):
                 ).get_children()[0].get_children()[0]
                 new_page = page.get_children()[0]
                 new_content = previous_page.update_content()
+                # Remove ObjectID if necessary
+                if '_id' in new_content.keys():
+                    new_content.pop('_id')
                 new_page.overwrite(new_content)
 
         self.switch_counter += 1
