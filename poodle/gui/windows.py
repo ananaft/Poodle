@@ -370,19 +370,19 @@ class ExamEvaluationWindow(Gtk.Window):
                                  self.stats_field,
                                  Gtk.PositionType.RIGHT, 1, 1)
 
-        self.ratings_label = Gtk.Label(label='Ratings')
-        self.grid.attach(self.ratings_label, 0, 2, 1, 1)
+        self.grades_label = Gtk.Label(label='Grades')
+        self.grid.attach(self.grades_label, 0, 2, 1, 1)
         
-        self.ratings_field = Gtk.Entry()
-        self.grid.attach_next_to(self.ratings_field,
-                                 self.ratings_label,
+        self.grades_field = Gtk.Entry()
+        self.grid.attach_next_to(self.grades_field,
+                                 self.grades_label,
                                  Gtk.PositionType.RIGHT, 20, 1)
 
-        self.ratings_button = Gtk.Button(label='Choose file')
-        self.ratings_button.connect('clicked', self.on_choose_clicked,
-                                  self.ratings_field)
-        self.grid.attach_next_to(self.ratings_button,
-                                 self.ratings_field,
+        self.grades_button = Gtk.Button(label='Choose file')
+        self.grades_button.connect('clicked', self.on_choose_clicked,
+                                  self.grades_field)
+        self.grid.attach_next_to(self.grades_button,
+                                 self.grades_field,
                                  Gtk.PositionType.RIGHT, 1, 1)
 
         self.control = gui.panels.ExamEvaluationControlPanel(self)
@@ -400,9 +400,9 @@ class ExamEvaluationWindow(Gtk.Window):
     def evaluate(self, button) -> None:
 
         stats_file = self.stats_field.get_text()
-        ratings_file = self.ratings_field.get_text()
+        grades_file = self.grades_field.get_text()
 
-        exam.evaluate_exam(self.exam_name, stats_file, ratings_file)
+        exam.evaluate_exam(self.exam_name, stats_file, grades_file)
         self.destroy()
 
 

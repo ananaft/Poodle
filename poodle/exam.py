@@ -117,7 +117,7 @@ def remove_exam(exam, message=True):
               f'{updates.modified_count} question(s) have been updated.')
 
 
-def evaluate_exam(exam_name, stats_file, ratings_file):
+def evaluate_exam(exam_name, stats_file, grades_file):
     """
     This function will evaluate the JSON files which are exported from Moodle
     within the categories 'Statistik' and 'Bewertung'. The evaluated information
@@ -130,7 +130,7 @@ def evaluate_exam(exam_name, stats_file, ratings_file):
       Name of the exam within the database.
     stats_file (str):
       Path of the JSON file exported from 'Statistik'.
-    ratings_file (str):
+    grades_file (str):
       Path of the JSON file exported from 'Bewertung'.
 
     ------------------------
@@ -148,30 +148,53 @@ def evaluate_exam(exam_name, stats_file, ratings_file):
     assert EXAMS.find_one({'name': exam_name}), \
         f'Exam {exam_name} does not exist in database!'
 
-    # Read stats_file for question names
     with open(stats_file, 'r') as rf:
         stats = json.load(rf)
+
+    # Define languages
+    english = {
+        'quiz_name': 'quizname', 'index': 'q', 'question_name': 'questionname',
+        'last_name': 'lastname', 'overall_average': 'Overall average',
+        'grade': 'grade'
+    }
+    german = {
+        'quiz_name': 'test-name', 'index': 'f', 'question_name': 'titelderfrage',
+        'last_name': 'nachname', 'overall_average': 'Gesamtdurchschnitt',
+        'grade': 'bewertung'
+    }
+    # Detect language
+    if 'quizname' in stats[0][0].keys():
+        lang_profile = english
+    elif 'test-name' in stats[0][0].keys():
+        lang_profile = german
+
     # Check again for correct exam name
-    assert stats[0][0]['test-name'] == exam_name, \
+    assert stats[0][0][lang_profile['quiz_name']] == exam_name, \
         f'Exam name in stats file is not {exam_name}!'
     name_pairs = {}
     for q in stats[1]:
         # Ignore "clones" from rvar questions
-        if '.' not in q['f']:
+        if '.' not in q[lang_profile['index']]:
             # Check question in database
-            question = QUESTIONS.find_one({'name': q['titelderfrage']})
+            question = QUESTIONS.find_one(
+                {'name': q[lang_profile['question_name']]}
+            )
             if question:
-                moodle_name = 'f' + q['f'] + str(question['points'] * 100)
-                name_pairs[moodle_name] = [q['titelderfrage'], question['points']]
+                moodle_name = lang_profile['index'] + q[lang_profile['index']] + \
+                    str(question['points'] * 100)
+                name_pairs[moodle_name] = [
+                    q[lang_profile['question_name']], question['points']
+                ]
             else:
-                print(f'{q["titelderfrage"]} not in database. ' +
+                print(f'{q[lang_profile["question_name"]]} not in database. ' +
                       'Ignoring question for evaluation.')
 
-    # Read ratings_file for exam and question scores
-    with open(ratings_file, 'r') as rf:
+    # Read grades_file for exam and question scores
+    with open(grades_file, 'r') as rf:
         averages = json.load(rf)[0][-1]
-    assert averages['nachname'] == 'Gesamtdurchschnitt', \
-        f'Last entry in ratings is not Gesamtdurchschnitt, but {averages["nachname"]} instead!'
+    assert averages[lang_profile['last_name']] == lang_profile['overall_average'], \
+        f'Last entry in grades is not {lang_profile["overall_average"]}, ' + \
+        f'but {averages[lang_profile["last_name"]]} instead!'
     # Append average question scores to name_pairs
     for q in name_pairs:
         avg = averages[q]
@@ -182,7 +205,7 @@ def evaluate_exam(exam_name, stats_file, ratings_file):
         name_pairs[q].append(avg)
     # Get average exam score
     exam_average = float([
-        averages[k] for k, v in averages.items() if k.startswith('bewertung')
+        averages[k] for k, v in averages.items() if k.startswith(lang_profile['grade'])
     ][0].replace(',', '.'))
     # Update questions in DB
     for k, v in name_pairs.items():
