@@ -2,7 +2,25 @@
 
 # Prints help
 usage () {
-    echo -e '\nThis will be the documentation for the shell script later on...\n'
+    docstring=$(cat <<-EOF
+poodle [OPTION] ... <DATABASE>
+
+Connection options:
+    -l               connects to an already running MongoDB daemon on local
+                     system or starts one manually
+    -s <ADDRESS>     connects to a server hosted at <ADDRESS> running a MongoDB
+                     daemon
+Authorization options:
+    -u <USERNAME>    username for authorization; usually only needed when
+                     connecting to server
+    -p <PASSWORD>    password for authorization; only needed when username
+                     option is provided; user will be asked for password input
+                     by prompt if this option is not provided
+Miscellaneous options:
+    -h               show this help
+EOF
+)
+    echo "$docstring"
 }
 
 # Loading animation
