@@ -91,6 +91,22 @@ install_system_dependencies () {
 	  done; } &&
 	[[ -n "$arch_packages" ]] &&
 	yes | sudo pacman -S --needed "${arch_packages[@]}"
+
+    # Fedora
+    local -a fedora_packages=(
+	'cairo'
+    )
+    # Install missing system packages
+    cat /etc/os-release | grep -Eq '^ID=fedora' &&
+	{ for i in "${fedora_packages[@]}"; do
+	      dnf list --installed 2>/dev/null | grep -q "^$i " &&
+		  already_installed+=( "$i" )
+	  done;
+	  for i in "${already_installed[@]}"; do
+	      fedora_packages=( "${fedora_packages[@]/$i}" )
+	  done; } &&
+	[[ -n "$fedora_packages" ]] &&
+	yes | sudo dnf install -q "${fedora_packages[@]}"
 }
 
 connect_local () {
