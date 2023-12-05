@@ -94,7 +94,8 @@ install_system_dependencies () {
 
     # Fedora
     local -a fedora_packages=(
-	'cairo'
+	'cairo' 'cairo-devel' 'python3-devel' 'gobject-introspection-devel'
+	'cairo-gobject-devel'
     )
     # Install missing system packages
     cat /etc/os-release | grep -Eq '^ID=fedora' &&

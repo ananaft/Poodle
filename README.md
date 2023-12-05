@@ -15,10 +15,10 @@ under Ubuntu Linux.
 
 Poodle's key features are as follows:
 
-* create, edit, and overview questions and exams within a fast GUI
-* create XML files for export of questions into Moodle
-* evaluate exams using Moodle results
-* import questions in bulk with JSON files
+* Create, edit, and overview questions and exams within a fast GUI
+* Create XML files for export of questions into Moodle
+* Evaluate exams using Moodle results
+* Import questions in bulk with JSON files
 
 Poodle was created and is maintained by Lukas Hötttges. It was enriched by ideas
 and suggestions from Marian Krawietz at University of Potsdam.
