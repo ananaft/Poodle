@@ -133,6 +133,9 @@ connect_local () {
 	    urxvt|urxvtd)
 		urxvtc -e mongod --dbpath ./mongo --logappend
 		;;
+	    mate-terminal)
+		mate-terminal --window --command="mongod --dbpath ./mongo --logappend"
+		;;
 	    *)
 		echo "Running on unsupported terminal: $term"
 		exit 1

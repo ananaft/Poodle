@@ -65,7 +65,7 @@ class QuestionTreeview(Gtk.TreeView):
         )
         # Make exam appearance counter
         transform = lambda x: int(type(x) == float)
-        appearances = df[exam_list].applymap(transform).sum(axis=1)
+        appearances = df[exam_list].map(transform).sum(axis=1)
         df.insert(1, 'appearances', appearances.astype('int64'))
 
         data = row_to_list(df)
