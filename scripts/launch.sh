@@ -60,13 +60,13 @@ db_check () {
 install_system_dependencies () {
     local -a already_installed
 
-    # Ubuntu/Debian
+    # Ubuntu/Debian/Linux Mint
     local -a debian_packages=(
 	'python3-pip' 'python3-venv' 'libgirepository1.0-dev' 'gcc'
 	'libcairo2-dev' 'pkg-config' 'python3-dev' 'gir1.2-gtk-4.0'
     )
     # Install missing system packages
-    cat /etc/os-release | grep -Eq '^ID=([Dd]ebian|[Uu]buntu)' &&
+    cat /etc/os-release | grep -Eq '^ID=([Dd]ebian|[Uu]buntu|[Ll]inux\s?[Mm]int)' &&
 	{ for i in "${debian_packages[@]}"; do
 	      apt list --installed 2>/dev/null | grep -q "^$i " &&
 		  already_installed+=( "$i" )
@@ -107,7 +107,7 @@ install_system_dependencies () {
 	      fedora_packages=( "${fedora_packages[@]/$i}" )
 	  done; } &&
 	[[ -n "$fedora_packages" ]] &&
-	yes | sudo dnf install -q "${fedora_packages[@]}"
+	sudo dnf install -yq "${fedora_packages[@]}"
 }
 
 connect_local () {
@@ -125,13 +125,13 @@ connect_local () {
 	term=$(ps -o comm= -p "$(($(ps -o ppid= -p "$(($(ps -o sid= -p "$$")))")))")
 	case "$term" in
 	    xfce4-terminal)
-		xfce4-terminal -e "mongod --dbpath ./mongo --logappend --nojournal"
+		xfce4-terminal -e "mongod --dbpath ./mongo --logappend"
 		;;
 	    gnome-terminal|gnome-terminal-)
-		gnome-terminal -- sh -c "mongod --dbpath ./mongo --logappend --nojournal; bash"
+		gnome-terminal -- sh -c "mongod --dbpath ./mongo --logappend; bash"
 		;;
 	    urxvt|urxvtd)
-		urxvtc -e mongod --dbpath ./mongo --logappend --nojournal
+		urxvtc -e mongod --dbpath ./mongo --logappend
 		;;
 	    *)
 		echo "Running on unsupported terminal: $term"
