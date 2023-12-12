@@ -64,11 +64,12 @@ install_system_dependencies () {
     local -a debian_packages=(
 	'python3-pip' 'python3-venv' 'libgirepository1.0-dev' 'gcc'
 	'libcairo2-dev' 'pkg-config' 'python3-dev' 'gir1.2-gtk-4.0'
+	'gir1.2-webkit2-4.0'
     )
     # Install missing system packages
     cat /etc/os-release | grep -Eq '^ID=([Dd]ebian|[Uu]buntu|[Ll]inux\s?[Mm]int)' &&
 	{ for i in "${debian_packages[@]}"; do
-	      apt list --installed 2>/dev/null | grep -q "^$i " &&
+	      apt list --installed 2>/dev/null | grep -Eq "^$i[\s/]" &&
 		  already_installed+=( "$i" )
 	  done;
 	  for i in "${already_installed[@]}"; do
@@ -84,7 +85,7 @@ install_system_dependencies () {
     # Install missing system packages
     cat /etc/os-release | grep -Eq '^ID=([Aa]rch|[Mm]anjaro)' &&
 	{ for i in "${arch_packages[@]}"; do
-	      pacman -Q | grep -q "^$i " && already_installed+=( "$i" )
+	      pacman -Q | grep -Eq "^$i[\s/]" && already_installed+=( "$i" )
 	  done;
 	  for i in "${already_installed[@]}"; do
 	      arch_packages=( "${arch_packages[@]/$i}" )
@@ -100,7 +101,7 @@ install_system_dependencies () {
     # Install missing system packages
     cat /etc/os-release | grep -Eq '^ID=fedora' &&
 	{ for i in "${fedora_packages[@]}"; do
-	      dnf list --installed 2>/dev/null | grep -q "^$i " &&
+	      dnf list --installed 2>/dev/null | grep -Eq "^$i[\s/]" &&
 		  already_installed+=( "$i" )
 	  done;
 	  for i in "${already_installed[@]}"; do
@@ -135,6 +136,12 @@ connect_local () {
 		;;
 	    mate-terminal)
 		mate-terminal --window --command="mongod --dbpath ./mongo --logappend"
+		;;
+	    konsole)
+		konsole -e '$SHELL -c "mongod --dbpath ./mongo --logappend; $SHELL"' &
+		;;
+	    qterminal)
+		qterminal -e "mongod --dbpath ./mongo --logappend" &
 		;;
 	    *)
 		echo "Running on unsupported terminal: $term"
