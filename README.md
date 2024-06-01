@@ -41,8 +41,9 @@ Poodle's database.
 A full documentation of Poodle can be found
 [here](https://ananaft.github.io/poodle-docs/).
 
-
+<!---
 ## Known issues (Work in progress)
 
 
 ## Planned features (Work in progress)
+-->
