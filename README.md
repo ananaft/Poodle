@@ -36,7 +36,7 @@ Poodle's database.
 * You can now execute `launch.sh` directly or with `poodle -l <DB NAME>` if you
   followed the previous step.
 
-## Documentation
+## Documentation (Work in progress)
 
 A full documentation of Poodle can be found
 [here](https://ananaft.github.io/poodle-docs/).
